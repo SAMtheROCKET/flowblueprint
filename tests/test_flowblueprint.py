@@ -19,6 +19,7 @@ from flowblueprint.model import (
 from flowblueprint.rules import check_diagram
 from flowblueprint.source import load_script
 from flowblueprint.summary import apply_groups_list, summarise_items_list
+from flowblueprint.svg import render_svg_str
 
 EXAMPLES = Path(__file__).parent / "examples"
 
@@ -389,6 +390,18 @@ class RenderTests(unittest.TestCase):
                 self.assertIn(cell.get("source"), ids)
                 self.assertIn(cell.get("target"), ids)
         self.assertIn("&lt;b&gt;flag_heat_events&lt;/b&gt;", first)
+
+    def test_svg_is_valid_and_shows_every_label(self):
+        flow = build_flow(load_script(EXAMPLES / "station_report.py"))
+        diagram = layout_flow(flow)
+        text = render_svg_str(diagram)
+        root = ET.fromstring(text)
+        self.assertTrue(root.tag.endswith("svg"))
+        self.assertEqual(
+            len([node for node in root.iter() if node.tag.endswith(
+                "polyline")]), len(diagram.edges))
+        self.assertIn(">flag_heat_events</text>", text)
+        self.assertIn(">hot_hours.png</text>", text)
 
     def test_rules_find_open_ends_and_unclosed_loops(self):
         flow = build_flow(load_script(EXAMPLES / "station_report.py"))

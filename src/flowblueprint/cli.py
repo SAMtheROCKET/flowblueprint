@@ -15,7 +15,7 @@ from flowblueprint import __version__
 from flowblueprint.drawio import render_drawio_str
 from flowblueprint.flow import build_flow
 from flowblueprint.layout import layout_flow
-from flowblueprint.model import Branch, Flow, Item, Loop, Step
+from flowblueprint.model import Branch, Diagram, Flow, Item, Loop, Step
 from flowblueprint.rules import check_diagram
 from flowblueprint.source import load_script
 from flowblueprint.svg import render_svg_str
@@ -111,6 +111,28 @@ def load_flow(script: Path, overrides: Path | None,
     return flow
 
 
+def report_findings_bool(script: Path, flow: Flow, diagram: Diagram,
+                         max_blocks_int: int) -> bool:
+    """Print notes and rule findings.
+
+    Args:
+        script: The script, for the location prefix.
+        flow: The flow, whose notes list what was not drawn.
+        diagram: The laid-out diagram to check.
+        max_blocks_int: The column block limit.
+
+    Returns:
+        True when any finding is an error.
+    """
+    findings_list = check_diagram(diagram, max_blocks_int)
+    for note in flow.notes:
+        print(f"{script}:{note.line}: note: {note.message}")
+    for finding in findings_list:
+        print(f"{script}:{finding.line}: {finding.code} {finding.severity}: "
+              f"{finding.message}")
+    return any(finding.severity == "error" for finding in findings_list)
+
+
 def main(argv_list: list[str] | None = None) -> int:
     """Run the command line.
 
@@ -131,14 +153,8 @@ def main(argv_list: list[str] | None = None) -> int:
               file=sys.stderr)
         return 2
     diagram = layout_flow(flow, arguments.max_blocks)
-    findings_list = check_diagram(diagram, arguments.max_blocks)
-    for note in flow.notes:
-        print(f"{script}:{note.line}: note: {note.message}")
-    for finding in findings_list:
-        print(f"{script}:{finding.line}: {finding.code} {finding.severity}: "
-              f"{finding.message}")
-    has_errors = any(finding.severity == "error"
-                     for finding in findings_list)
+    has_errors = report_findings_bool(script, flow, diagram,
+                                      arguments.max_blocks)
     if arguments.check:
         return 1 if has_errors else 0
     output = arguments.output or script.with_suffix(".drawio")

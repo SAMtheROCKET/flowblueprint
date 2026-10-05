@@ -114,6 +114,27 @@ def build_edge_style_str(edge: Edge, nodes_dict: dict[str, Node]) -> str:
     return style_str
 
 
+def add_node_cell_none(root: ET.Element, node: Node) -> None:
+    """Add a node's cell and geometry to the draw.io model.
+
+    Args:
+        root: The model's root element (changed in place).
+        node: The node.
+
+    Returns:
+        None.
+    """
+    cell = ET.SubElement(root, "mxCell", id=node.node_id,
+                         value=label_html_str(node),
+                         style=build_node_style_str(node), vertex="1",
+                         parent="1")
+    ET.SubElement(cell, "mxGeometry", x=format_number_str(node.x_px),
+                  y=format_number_str(node.y_px),
+                  width=format_number_str(node.width),
+                  height=format_number_str(node.height),
+                  attrib={"as": "geometry"})
+
+
 def render_drawio_str(diagram: Diagram) -> str:
     """Render a diagram as draw.io XML.
 
@@ -135,16 +156,7 @@ def render_drawio_str(diagram: Diagram) -> str:
     ET.SubElement(root, "mxCell", id="1", parent="0")
     nodes_dict = {node.node_id: node for node in diagram.nodes}
     for node in diagram.nodes:
-        cell = ET.SubElement(root, "mxCell", id=node.node_id,
-                             value=label_html_str(node),
-                             style=build_node_style_str(node), vertex="1",
-                             parent="1")
-        ET.SubElement(cell, "mxGeometry",
-                      x=format_number_str(node.x_px),
-                      y=format_number_str(node.y_px),
-                      width=format_number_str(node.width),
-                      height=format_number_str(node.height),
-                      attrib={"as": "geometry"})
+        add_node_cell_none(root, node)
     for index_int, edge in enumerate(diagram.edges, start=1):
         cell = ET.SubElement(root, "mxCell", id=f"e{index_int}",
                              value=html.escape(edge.label),

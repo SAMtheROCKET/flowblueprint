@@ -20,10 +20,12 @@ jobs:
       - name: Regression tests
         run: python -m unittest discover -s tests -v
       - name: RefacTrail profile and correctness checks
+        shell: bash
         run: |
           python -m refactrail check src
           python -m refactrail lint src tests
       - name: Build and check the packages
+        shell: bash
         run: |
           python -m build
           python -m twine check --strict dist/*

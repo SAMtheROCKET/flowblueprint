@@ -50,7 +50,7 @@ def draw_shape_str(node: Node) -> str:
         return (f'<circle cx="{left + node.width / 2}" '
                 f'cy="{top + node.height / 2}" r="{node.width / 2}" '
                 f'{fill_str}/>')
-    polygon_list = shape_polygon_list(node)
+    polygon_list = list_polygon_points_list(node)
     if polygon_list:
         return (f'<polygon points="{format_points_str(polygon_list)}" '
                 f'{fill_str}/>')
@@ -71,7 +71,7 @@ def draw_shape_str(node: Node) -> str:
             f'height="{node.height}" {fill_str}/>' + extra_str)
 
 
-def shape_polygon_list(node: Node) -> list[tuple[float, float]]:
+def list_polygon_points_list(node: Node) -> list[tuple[float, float]]:
     """The corner points of polygon-shaped nodes.
 
     Args:
@@ -148,6 +148,27 @@ def draw_label_str(node: Node) -> str:
     return "".join(parts_list)
 
 
+def route_upward_list(start_tuple: tuple[float, float], source: Node,
+                      target: Node) -> list[tuple[float, float]]:
+    """Route an arrow back up (to a loop end or an earlier column).
+
+    Args:
+        start_tuple: Where the arrow leaves the source.
+        source: The source node.
+        target: The target node, above the start.
+
+    Returns:
+        A route through a gutter left of the target, entering it from
+        the left.
+    """
+    target_mid_y = target.y_px + target.height / 2
+    gutter_x = (target.x_px if target.x_px > source.x_px + source.width
+                else min(source.x_px, target.x_px)) - 24.0
+    return [start_tuple, (start_tuple[0], start_tuple[1] + 12.0),
+            (gutter_x, start_tuple[1] + 12.0), (gutter_x, target_mid_y),
+            (target.x_px, target_mid_y)]
+
+
 def route_points_list(edge: Edge, nodes_dict: dict[str, Node]
                       ) -> list[tuple[float, float]]:
     """A right-angled route for an arrow.
@@ -177,11 +198,7 @@ def route_points_list(edge: Edge, nodes_dict: dict[str, Node]
     else:
         start_tuple = (source_mid_x, source.y_px + source.height)
     if target.y_px + target.height < start_tuple[1]:
-        gutter_x = (target.x_px if target.x_px > source.x_px + source.width
-                    else min(source.x_px, target.x_px)) - 24.0
-        return [start_tuple, (start_tuple[0], start_tuple[1] + 12.0),
-                (gutter_x, start_tuple[1] + 12.0), (gutter_x, target_mid_y),
-                (target.x_px, target_mid_y)]
+        return route_upward_list(start_tuple, source, target)
     if start_tuple[0] > target_mid_x + 1.0:
         side_x = max(start_tuple[0], target.x_px + target.width) + 20.0
         return [start_tuple, (start_tuple[0], start_tuple[1] + 12.0),
