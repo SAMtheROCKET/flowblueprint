@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flowblueprint"
+version = "0.1.0a0"
+description = "The Python architect: turn scripts and Jupyter notebooks into block-diagram architectures (draw.io flowcharts) with inputs, outputs, dtypes, loops and decisions"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "Sambit Supriya Dash"}]
+keywords = ["python", "architecture", "architecture-generator", "archgen", "code-to-flowchart", "flowchart", "diagram", "drawio", "block-diagram", "script-to-architecture", "notebook-to-architecture", "workflow-diagram", "code-visualization", "documentation", "data-pipeline", "jupyter", "static-analysis", "developer-tools"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = ["funcloom>=0.10.3a0,<0.11", "refactrail>=0.4.0a0,<0.5"]
+
+[project.optional-dependencies]
+release = ["build>=1.2,<2", "setuptools>=77", "twine>=6,<7"]
+
+[project.scripts]
+flowblueprint = "flowblueprint.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/SAMtheROCKET/flowblueprint"
+Repository = "https://github.com/SAMtheROCKET/flowblueprint"
+Issues = "https://github.com/SAMtheROCKET/flowblueprint/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]

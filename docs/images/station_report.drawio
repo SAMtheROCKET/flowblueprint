@@ -1,0 +1,148 @@
+<mxfile host="flowblueprint" type="device">
+  <diagram id="flowblueprint" name="station_report.py">
+    <mxGraphModel grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="n1" value="" style="rounded=0;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="20" y="20" width="40" height="24" />
+        </mxCell>
+        <mxCell id="n2" value="station_utils.py" style="text;align=center;verticalAlign=middle;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;strokeColor=none;fillColor=none;align=left;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="70" y="20" width="160" height="24" />
+        </mxCell>
+        <mxCell id="n15" value="station_report.py" style="text;align=center;verticalAlign=middle;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;strokeColor=none;fillColor=none;align=center;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="250" y="20" width="240" height="24" />
+        </mxCell>
+        <mxCell id="n3" value="START" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="315" y="60" width="110" height="40" />
+        </mxCell>
+        <mxCell id="n4" value="&lt;b&gt;read_settings&lt;/b&gt;&lt;br&gt;Read the station list, heat&lt;br&gt;threshold and data folder.&lt;br&gt;in: CONFIG_PATH: str&lt;br&gt;out: stations_list: list[str],&lt;br&gt;threshold_float: float, folder_str:&lt;br&gt;str" style="rounded=0;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="250" y="130" width="240" height="133" />
+        </mxCell>
+        <mxCell id="n5" value="Set summaries_list." style="rounded=0;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="250" y="293" width="240" height="43" />
+        </mxCell>
+        <mxCell id="n6" value="for station_str in stations_list" style="shape=loopLimit;size=18;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="240" y="366" width="260" height="44" />
+        </mxCell>
+        <mxCell id="n7" value="&lt;b&gt;load_station_readings&lt;/b&gt;&lt;br&gt;Load the hourly readings of one&lt;br&gt;station from its Parquet file.&lt;br&gt;in: station_str: str, folder_str:&lt;br&gt;str&lt;br&gt;out: readings_df: pd.DataFrame" style="rounded=0;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="250" y="440" width="240" height="118" />
+        </mxCell>
+        <mxCell id="n8" value="&lt;b&gt;repair_missing_values&lt;/b&gt;&lt;br&gt;Fill short gaps in temperature and&lt;br&gt;humidity by interpolation.&lt;br&gt;in: readings_df: pd.DataFrame&lt;br&gt;out: readings_df: pd.DataFrame" style="rounded=0;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="250" y="588" width="240" height="103" />
+        </mxCell>
+        <mxCell id="n9" value="&lt;b&gt;flag_heat_events&lt;/b&gt;&lt;br&gt;Mark hours above the heat threshold&lt;br&gt;and count the events.&lt;br&gt;in: readings_df: pd.DataFrame,&lt;br&gt;threshold_float: float&lt;br&gt;out: flagged_df: pd.DataFrame,&lt;br&gt;event_count_int: int" style="rounded=0;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="250" y="721" width="240" height="133" />
+        </mxCell>
+        <mxCell id="n10" value="event_count_int == 0?" style="rhombus;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="260" y="884" width="220" height="80" />
+        </mxCell>
+        <mxCell id="n11" value="Print progress." style="rounded=0;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="530" y="994" width="240" height="43" />
+        </mxCell>
+        <mxCell id="n12" value="&lt;b&gt;summarise_station&lt;/b&gt;&lt;br&gt;Compute the hot hours, peak and mean&lt;br&gt;temperature of a station.&lt;br&gt;in: flagged_df: pd.DataFrame,&lt;br&gt;station_str: str&lt;br&gt;out: summary_dict: dict" style="rounded=0;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="250" y="1067" width="240" height="118" />
+        </mxCell>
+        <mxCell id="n13" value="Append summary_dict to&lt;br&gt;summaries_list." style="rounded=0;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="250" y="1215" width="240" height="58" />
+        </mxCell>
+        <mxCell id="n14" value="A" style="ellipse;aspect=fixed;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="348" y="1303" width="44" height="44" />
+        </mxCell>
+        <mxCell id="n16" value="A" style="ellipse;aspect=fixed;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="968" y="60" width="44" height="44" />
+        </mxCell>
+        <mxCell id="n17" value="for station_str in stations_list" style="shape=loopLimit;size=18;flipV=1;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="860" y="134" width="260" height="44" />
+        </mxCell>
+        <mxCell id="n18" value="Compute summary_df with DataFrame." style="rounded=0;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="870" y="208" width="240" height="43" />
+        </mxCell>
+        <mxCell id="n19" value="Save as CSV.&lt;br&gt;in: summary_df: DataFrame" style="rounded=0;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="870" y="281" width="240" height="58" />
+        </mxCell>
+        <mxCell id="n20" value="heat_summary.csv" style="shape=parallelogram;perimeter=parallelogramPerimeter;fixedSize=1;size=16;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1160" y="288" width="140" height="44" />
+        </mxCell>
+        <mxCell id="n21" value="Save the data.&lt;br&gt;in: summaries_list: list" style="rounded=0;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="870" y="369" width="240" height="58" />
+        </mxCell>
+        <mxCell id="n22" value="heat_summary.json" style="shape=parallelogram;perimeter=parallelogramPerimeter;fixedSize=1;size=16;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1160" y="376" width="140" height="44" />
+        </mxCell>
+        <mxCell id="n23" value="Plot Hot hours per station." style="shape=document;boundedLbl=1;size=0.15;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="870" y="457" width="240" height="43" />
+        </mxCell>
+        <mxCell id="n24" value="hot_hours.png" style="shape=document;boundedLbl=1;size=0.15;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1160" y="457" width="140" height="44" />
+        </mxCell>
+        <mxCell id="n25" value="END" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;fillColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="935" y="531" width="110" height="40" />
+        </mxCell>
+        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;entryX=0.5;entryY=0;" edge="1" parent="1" source="n3" target="n4">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;entryX=0.5;entryY=0;" edge="1" parent="1" source="n4" target="n5">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;entryX=0.5;entryY=0;" edge="1" parent="1" source="n5" target="n6">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;entryX=0.5;entryY=0;" edge="1" parent="1" source="n6" target="n7">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;entryX=0.5;entryY=0;" edge="1" parent="1" source="n7" target="n8">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;entryX=0.5;entryY=0;" edge="1" parent="1" source="n8" target="n9">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e7" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;exitX=1;exitY=0.5;entryX=0.5;entryY=0;" edge="1" parent="1" source="n10" target="n11">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;entryX=0.5;entryY=0;" edge="1" parent="1" source="n9" target="n10">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e9" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="n10" target="n12">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e10" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;entryX=0.5;entryY=0;" edge="1" parent="1" source="n12" target="n13">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;entryX=0.5;entryY=0;" edge="1" parent="1" source="n13" target="n14">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;entryX=0.5;entryY=0;" edge="1" parent="1" source="n16" target="n17">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;entryX=0.5;entryY=0;" edge="1" parent="1" source="n17" target="n18">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n19" target="n20">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;entryX=0.5;entryY=0;" edge="1" parent="1" source="n18" target="n19">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e16" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n21" target="n22">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e17" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;entryX=0.5;entryY=0;" edge="1" parent="1" source="n19" target="n21">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e18" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="n23" target="n24">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e19" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;entryX=0.5;entryY=0;" edge="1" parent="1" source="n21" target="n23">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e20" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;entryX=0.5;entryY=0;" edge="1" parent="1" source="n23" target="n25">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e21" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;fontSize=11;entryX=0;entryY=0.5;" edge="1" parent="1" source="n11" target="n17">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
