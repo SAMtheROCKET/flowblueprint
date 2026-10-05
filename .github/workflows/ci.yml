@@ -1,0 +1,44 @@
+name: Checks
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  python:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ['3.12', '3.13', '3.14']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[release]"
+      - name: Regression tests
+        run: python -m unittest discover -s tests -v
+      - name: RefacTrail profile and correctness checks
+        run: |
+          python -m refactrail check src
+          python -m refactrail lint src tests
+      - name: Build and check the packages
+        run: |
+          python -m build
+          python -m twine check --strict dist/*
+      - name: Install the wheel in a clean environment and draw the example
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/clean"
+          if [ -x "$RUNNER_TEMP/clean/bin/python" ]; then
+            CLEAN="$RUNNER_TEMP/clean/bin/python"
+          else
+            CLEAN="$RUNNER_TEMP/clean/Scripts/python.exe"
+          fi
+          "$CLEAN" -m pip install dist/*.whl
+          cd "$RUNNER_TEMP"
+          "$CLEAN" -m flowblueprint "$GITHUB_WORKSPACE/tests/examples/station_report.py" -o check.drawio
+          "$CLEAN" -m flowblueprint "$GITHUB_WORKSPACE/tests/examples/station_report.py" --level summary -o check.svg
+          "$CLEAN" -m flowblueprint "$GITHUB_WORKSPACE/tests/examples/station_report.py" --check
+          test -s check.drawio && test -s check.svg
