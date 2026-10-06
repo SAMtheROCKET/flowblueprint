@@ -186,6 +186,9 @@ becomes a *Create the Pipeline* block, `pipeline.load()` resolves to the
 method and its docstring, and when the entry point only hands over to one
 method (`Pipeline(config).run()`), that method's steps are drawn.
 
+FlowBlueprint's own [ARCHITECTURE.md](ARCHITECTURE.md) is drawn this way
+(`flowblueprint src/flowblueprint -o ARCHITECTURE.md`).
+
 ## Keep the diagram up to date
 
 In GitHub Actions, the FlowBlueprint action draws the diagram on every

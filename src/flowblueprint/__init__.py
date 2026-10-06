@@ -1,6 +1,7 @@
-"""FlowBlueprint: Python scripts to block-diagram architecture (draw.io).
+"""FlowBlueprint: Python scripts, notebooks and projects to architecture.
 
-The source is read and parsed, never imported or executed.
+Diagrams are written as draw.io, SVG, HTML or Mermaid. The source is
+read and parsed, never imported or executed.
 """
 
 from flowblueprint._version import __version__
