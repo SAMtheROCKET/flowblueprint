@@ -20,6 +20,11 @@ from flowblueprint.rules import check_diagram
 from flowblueprint.source import load_script
 from flowblueprint.summary import apply_groups_list, summarise_items_list
 from flowblueprint.svg import render_svg_str
+from flowblueprint.mermaid import render_mermaid_str
+from flowblueprint.overview import layout_project
+from flowblueprint.page import render_html_str
+from flowblueprint.project import (
+    ENTRY_KIND, MODULE_KIND, NOTEBOOK_KIND, PACKAGE_KIND, load_project)
 
 EXAMPLES = Path(__file__).parent / "examples"
 
@@ -415,6 +420,145 @@ class RenderTests(unittest.TestCase):
         self.assertTrue({"FB003", "FB004"} <= codes)
 
 
+def write_tree(files_dict: dict[str, str]) -> Path:
+    """Write files (relative path -> text) into a new temporary folder."""
+    folder = Path(tempfile.mkdtemp())
+    for name_str, text_str in files_dict.items():
+        path = folder / name_str
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(textwrap.dedent(text_str), encoding="utf-8")
+    return folder
+
+
+def edge_names(project) -> set[tuple[str, str]]:
+    """Import edges as (importer path, imported path) strings."""
+    return {(project.files[source].path.as_posix(),
+             project.files[target].path.as_posix())
+            for source, target in project.edges}
+
+
+class MermaidAndPageTests(unittest.TestCase):
+    def setUp(self):
+        flow = build_flow(load_script(EXAMPLES / "station_report.py"))
+        self.diagram = layout_flow(flow, 1_000_000)
+
+    def test_mermaid_flowchart_has_shapes_edges_and_legend(self):
+        text = render_mermaid_str(self.diagram)
+        self.assertTrue(text.startswith('---\ntitle: "station_report.py"'))
+        self.assertIn("flowchart TD", text)
+        self.assertIn('(["START"])', text)
+        self.assertIn('{"event_count_int == 0?"}', text)
+        self.assertIn('[/"heat_summary.csv"/]', text)
+        self.assertIn('-->|"Yes"|', text)
+        self.assertIn("classDef module1 fill:", text)
+        self.assertIn('legend1["station_utils.py"]', text)
+        self.assertNotIn("((", text)  # one column: no connectors
+
+    def test_mermaid_escapes_label_text(self):
+        node = self.diagram.nodes[-1]
+        node.label = ['say "hi" <now> | `x` & y']
+        text = render_mermaid_str(self.diagram)
+        self.assertIn("say #quot;hi#quot; #lt;now#gt; #124; #96;x#96; "
+                      "#amp; y", text)
+
+    def test_html_page_embeds_the_svg(self):
+        page = render_html_str(self.diagram, ["line 3: not drawn"])
+        self.assertTrue(page.startswith("<!doctype html>"))
+        self.assertIn("<svg", page)
+        self.assertIn("<li>line 3: not drawn</li>", page)
+
+
+class ProjectTests(unittest.TestCase):
+    def test_example_folder(self):
+        project = load_project(EXAMPLES)
+        kinds = {info.path.name: info.kind for info in project.files}
+        self.assertEqual(kinds, {"station_report.py": ENTRY_KIND,
+                                 "station_utils.py": MODULE_KIND})
+        self.assertEqual(edge_names(project),
+                         {("station_report.py", "station_utils.py")})
+        utils = next(info for info in project.files
+                     if info.path.name == "station_utils.py")
+        self.assertEqual(utils.reads, ["*.parquet"])
+
+    def test_package_relative_and_sibling_imports(self):
+        folder = write_tree({
+            "run.py": """
+                from shop import orders
+                if __name__ == "__main__":
+                    orders.place()
+            """,
+            "shop/__init__.py": '"""The shop package."""\n',
+            "shop/orders.py": """
+                from .stock import reserve
+                from shop.prices import price_of
+                def place(): ...
+            """,
+            "shop/stock.py": "def reserve(): ...\n",
+            "shop/prices.py": "import json\ndef price_of(): ...\n",
+            "scripts/report.py": """
+                import helpers
+                helpers.write_report()
+            """,
+            "scripts/helpers.py": """
+                def write_report():
+                    rows_df.to_csv("report.csv")
+            """,
+            "tests/test_shop.py": "import shop\n",
+            ".venv/lib/x.py": "import shop\n",
+        })
+        project = load_project(folder)
+        self.assertEqual(edge_names(project), {
+            ("run.py", "shop/orders.py"),
+            ("shop/orders.py", "shop/stock.py"),
+            ("shop/orders.py", "shop/prices.py"),
+            ("scripts/report.py", "scripts/helpers.py")})
+        kinds = {info.path.as_posix(): info.kind for info in project.files}
+        self.assertEqual(kinds["shop/__init__.py"], PACKAGE_KIND)
+        self.assertEqual(kinds["scripts/report.py"], ENTRY_KIND)
+        helpers = next(info for info in project.files
+                       if info.path.name == "helpers.py")
+        self.assertEqual(helpers.writes, ["report.csv"])
+        self.assertNotIn("tests/test_shop.py", kinds)
+        with_tests = load_project(folder, include_tests=True)
+        self.assertIn("tests/test_shop.py", {
+            info.path.as_posix() for info in with_tests.files})
+
+    def test_folder_inside_a_package_and_cycles(self):
+        folder = write_tree({
+            "pkg/__init__.py": "",
+            "pkg/a.py": "from pkg.b import g\ndef f(): ...\n",
+            "pkg/b.py": "from pkg import a\ndef g(): ...\n",
+            "pkg/nb.ipynb": json.dumps({
+                "nbformat": 4, "nbformat_minor": 5, "metadata": {},
+                "cells": [{"cell_type": "code", "metadata": {},
+                           "source": "print(1)\n", "outputs": [],
+                           "execution_count": None}]}),
+        })
+        project = load_project(folder / "pkg")
+        self.assertEqual(edge_names(project), {("a.py", "b.py"),
+                                               ("b.py", "a.py")})
+        kinds = {info.path.name: info.kind for info in project.files}
+        self.assertEqual(kinds["nb.ipynb"], NOTEBOOK_KIND)
+        diagram = layout_project(project)
+        blocks = [node for node in diagram.nodes
+                  if node.node_id.startswith("file")]
+        self.assertEqual(len(blocks), 4)
+        for first in blocks:  # blocks never overlap
+            for second in blocks:
+                if first is not second:
+                    self.assertFalse(
+                        first.x_px < second.x_px + second.width
+                        and second.x_px < first.x_px + first.width
+                        and first.y_px < second.y_px + second.height
+                        and second.y_px < first.y_px + first.height)
+
+    def test_unreadable_files_are_noted(self):
+        folder = write_tree({"good.py": "x = 1\n", "bad.py": "def (:\n"})
+        project = load_project(folder)
+        self.assertEqual([info.path.name for info in project.files],
+                         ["good.py"])
+        self.assertTrue(project.notes[0].startswith("bad.py: not drawn"))
+
 class CommandLineTests(unittest.TestCase):
     def run_cli(self, *arguments: str) -> tuple[int, str]:
         output = io.StringIO()
@@ -458,6 +602,25 @@ class CommandLineTests(unittest.TestCase):
                                str(target), "--overrides", str(overrides))
         self.assertEqual(code, 0)
         self.assertIn("Find hot hours.", target.read_text(encoding="utf-8"))
+
+
+    def test_folder_mode_and_output_formats(self):
+        folder = Path(tempfile.mkdtemp())
+        for suffix in (".md", ".mmd", ".html", ".svg", ".drawio"):
+            target = folder / f"overview{suffix}"
+            code, out = self.run_cli(str(EXAMPLES), "-o", str(target))
+            self.assertEqual(code, 0, out)
+            self.assertIn("2 files, 1 imports", out)
+            self.assertTrue(target.read_text(encoding="utf-8"))
+        code, _ = self.run_cli(str(EXAMPLES / "station_report.py"), "-o",
+                               str(folder / "flow.md"))
+        self.assertEqual(code, 0)
+        self.assertIn("```mermaid",
+                      (folder / "flow.md").read_text(encoding="utf-8"))
+        self.assertEqual(self.run_cli(str(EXAMPLES), "-o",
+                                      str(folder / "x.png"))[0], 2)
+        self.assertFalse((folder / "x.png").exists())
+        self.assertFalse((EXAMPLES / "architecture.drawio").exists())
 
 
 if __name__ == "__main__":

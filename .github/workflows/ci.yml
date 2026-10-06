@@ -43,4 +43,6 @@ jobs:
           "$CLEAN" -m flowblueprint "$GITHUB_WORKSPACE/tests/examples/station_report.py" -o check.drawio
           "$CLEAN" -m flowblueprint "$GITHUB_WORKSPACE/tests/examples/station_report.py" --level summary -o check.svg
           "$CLEAN" -m flowblueprint "$GITHUB_WORKSPACE/tests/examples/station_report.py" --check
-          test -s check.drawio && test -s check.svg
+          "$CLEAN" -m flowblueprint "$GITHUB_WORKSPACE/tests/examples/station_report.py" -o check.md
+          "$CLEAN" -m flowblueprint "$GITHUB_WORKSPACE/tests/examples" -o overview.html
+          test -s check.drawio && test -s check.svg && test -s check.md && test -s overview.html

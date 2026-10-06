@@ -198,12 +198,15 @@ class Edge:
         target_id: The node the arrow points to.
         label: Text on the arrow, such as "Yes" or "No".
         is_side: True for arrows to and from data shapes beside a block.
+        enters_top: True for arrows that always leave the bottom of the
+            source and enter the top of the target (project overviews).
     """
 
     source_id: str
     target_id: str
     label: str = ""
     is_side: bool = False
+    enters_top: bool = False
 
 
 @dataclass

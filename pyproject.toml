@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flowblueprint"
-version = "0.1.0a0"
-description = "The Python architect: turn scripts and Jupyter notebooks into block-diagram architectures (draw.io flowcharts) with inputs, outputs, dtypes, loops and decisions"
+version = "0.2.0a0"
+description = "The Python architect: turn scripts, Jupyter notebooks and whole projects into architecture diagrams (draw.io, SVG, HTML, Mermaid) with inputs, outputs, dtypes, loops and decisions"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{name = "Sambit Supriya Dash"}]
-keywords = ["python", "architecture", "architecture-generator", "archgen", "code-to-flowchart", "flowchart", "diagram", "drawio", "block-diagram", "script-to-architecture", "notebook-to-architecture", "workflow-diagram", "code-visualization", "documentation", "data-pipeline", "jupyter", "static-analysis", "developer-tools"]
+keywords = ["python", "architecture", "architecture-generator", "archgen", "code-to-flowchart", "flowchart", "diagram", "drawio", "block-diagram", "script-to-architecture", "notebook-to-architecture", "workflow-diagram", "code-visualization", "mermaid", "project-architecture", "dependency-diagram", "documentation", "data-pipeline", "jupyter", "static-analysis", "developer-tools"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",

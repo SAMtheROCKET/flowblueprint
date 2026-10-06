@@ -1,7 +1,8 @@
 # FlowBlueprint
 
-**The Python architect: turn any Python script or Jupyter notebook into a
-clear block-diagram architecture (draw.io flowchart), without running it.**
+**The Python architect: turn any Python script, Jupyter notebook or whole
+project folder into a clear architecture diagram (draw.io, SVG, HTML or
+Mermaid for your README), without running it.**
 
 FlowBlueprint reads your code and draws how it flows: what runs first,
 which functions are called, what goes in and out of each step (with data
@@ -18,7 +19,7 @@ and FlowBlueprint (architect).
 
 ![A detailed FlowBlueprint architecture: start, settings, a loop over stations with coloured helper-module blocks, a Yes/No decision, outputs to CSV, JSON and a plot, and end](https://raw.githubusercontent.com/SAMtheROCKET/flowblueprint/main/docs/images/station_report_detailed.svg)
 
-**0.1.0a0 is an experimental alpha, not yet published.** Python 3.12 or
+**0.2.0a0 is an experimental alpha, not yet published.** Python 3.12 or
 newer is required. No LLM, account or network connection is needed.
 
 ## Quick start
@@ -29,11 +30,94 @@ flowblueprint my_script.py                  # writes my_script.drawio
 flowblueprint analysis.ipynb                # notebooks work too
 flowblueprint my_script.py --level summary  # fewer, higher-level blocks
 flowblueprint my_script.py -o overview.svg  # an image for slides/READMEs
+flowblueprint my_script.py -o FLOW.md       # Mermaid: renders on GitHub
+flowblueprint my_project/                   # the whole project at a glance
+flowblueprint my_project/ -o ARCHITECTURE.md
 ```
 
 Open the `.drawio` file in [diagrams.net](https://app.diagrams.net) or the
 VS Code *Draw.io Integration* extension, where you can edit it freely or
 save it as an editable `.drawio.png`.
+
+## Output formats
+
+The suffix of `-o` picks the format:
+
+| Suffix | You get | Good for |
+| --- | --- | --- |
+| `.drawio` (default) | An editable diagram | diagrams.net, the VS Code Draw.io extension |
+| `.svg` | An image | Slides, documents, READMEs |
+| `.html` | A self-contained web page with the image and notes | E-mail, tickets, sharing without tools |
+| `.md` | Markdown with a Mermaid flowchart | GitHub and GitLab READMEs, wikis, Obsidian |
+| `.mmd` | Mermaid text | Notion, documentation sites, Mermaid tools |
+
+A Mermaid diagram lives in your repository as text and GitHub draws it.
+This one is `flowblueprint station_report.py --level summary -o FLOW.md`:
+
+```mermaid
+---
+title: "station_report.py"
+---
+flowchart TD
+    n1(["START"])
+    n2["<b>Read and set</b><br/>Read settings; set summaries_list.<br/>in: CONFIG_PATH: str<br/>out: stations_list: list[str],<br/>threshold_float: float, folder_str:<br/>str"]
+    n3{{"for station_str in stations_list"}}
+    n4["<b>Load, repair and flag</b><br/>Load station readings; repair<br/>missing values; flag heat events.<br/>in: station_str: str, folder_str:<br/>str, threshold_float: float<br/>out: flagged_df: pd.DataFrame,<br/>event_count_int: int"]:::module1
+    n5{"event_count_int == 0?"}
+    n6["Print progress."]
+    n7["<b>Summarise and append</b><br/>Summarise station; append<br/>summary_dict to summaries_list.<br/>in: flagged_df: pd.DataFrame,<br/>station_str: str<br/>out: summary_dict: dict"]
+    n8{{"for station_str in stations_list"}}
+    n9["<b>Compute and save</b><br/>Compute summary_df with DataFrame;<br/>save as CSV; save the data.<br/>in: summary_df: DataFrame,<br/>summaries_list: list"]
+    n10[/"heat_summary.csv"/]
+    n11[/"heat_summary.json"/]
+    n12>"Plot Hot hours per station."]
+    n13>"hot_hours.png"]
+    n14(["END"])
+    n1 --> n2
+    n2 --> n3
+    n3 --> n4
+    n5 -->|"Yes"| n6
+    n4 --> n5
+    n5 -->|"No"| n7
+    n7 --> n8
+    n9 -.-> n10
+    n9 -.-> n11
+    n8 --> n9
+    n12 -.-> n13
+    n9 --> n12
+    n12 --> n14
+    n6 --> n8
+    subgraph legend["Legend"]
+        legend1["station_utils.py"]:::module1
+    end
+    classDef module1 fill:#dae8fc,stroke:#222222,color:#000000
+```
+
+## Whole projects
+
+Point FlowBlueprint at a folder to see the whole project: one block per
+script, module, package and notebook, with an arrow from each file to
+the project files it imports. Entry points sit at the top and the
+modules they rely on below them. Each block says what the file is (its
+docstring, the steps it runs, or the functions it provides), how many
+functions and classes it defines, and which files, databases and
+storage it reads and writes.
+
+```bash
+flowblueprint my_project/                        # my_project/architecture.drawio
+flowblueprint my_project/ -o ARCHITECTURE.md     # Mermaid for the README
+flowblueprint my_project/ --include-tests -o overview.html
+```
+
+![A project overview: an entry-point script above the helper module it imports, with the files each reads and writes](https://raw.githubusercontent.com/SAMtheROCKET/flowblueprint/main/docs/images/examples_overview.svg)
+
+Absolute, relative and sibling-script imports are resolved, including
+`src` layouts and folders inside packages. Virtual environments,
+caches, build output and hidden folders are skipped; test files are
+skipped unless you pass `--include-tests`. Files that cannot be parsed
+are listed as notes instead of stopping the run. In the draw.io and SVG
+output, an arrow that skips rows can pass behind blocks in between; the
+Mermaid output is laid out by Mermaid itself.
 
 ## What you get
 
@@ -128,16 +212,16 @@ notebooks into functions and modules, **RefacTrail** checks, formats and
 refactors them, and **FlowBlueprint** draws the architecture.
 
 Looking for a *Python architecture diagram generator*, *code to flowchart*,
-*script to architecture*, *notebook to architecture*, *workflow diagram
-generator* or *auto architecture generator (archgen)*? That is what
+*script to architecture*, *notebook to architecture*, *project
+architecture diagram*, *Python to Mermaid*, *workflow diagram generator*
+or *auto architecture generator (archgen)*? That is what
 FlowBlueprint does.
 
 ## Roadmap
 
-- 0.2: a high-level project diagram across several scripts and modules,
-  built on FuncLoom's project inventory.
-- 0.3: richer notebook views (Markdown headings as sections) and more
-  library knowledge for data types.
+- 0.3: richer notebook views (Markdown headings as sections), cleaner
+  arrow routing in large project overviews, and more library knowledge
+  for data types.
 - Later, optional: AI-written descriptions, always shown with their source
   evidence and never required.
 

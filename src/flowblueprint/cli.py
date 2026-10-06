@@ -1,9 +1,13 @@
-"""Command line: ``flowblueprint SCRIPT [options]``.
+"""Command line: ``flowblueprint PATH [options]``.
 
-Reads the script without running it, writes ``<script>.drawio`` next to
-it (or to ``--output``) and prints rule findings and notes. Existing
-files are never overwritten unless ``--force`` is given; the script
-itself is never changed.
+PATH is a script, a notebook or a project folder. The code is read
+without running it. A script's flow goes to ``<script>.drawio`` next to
+it, a folder's overview to ``<folder>/architecture.drawio``, or either
+to ``--output``, whose suffix picks the format: .drawio (editable),
+.svg (image), .html (a page holding the image), .md (Markdown with a
+Mermaid flowchart, which GitHub and GitLab render) or .mmd (Mermaid
+text). Rule findings and notes are printed. Existing files are never
+overwritten unless ``--force`` is given; sources are never changed.
 """
 
 import argparse
@@ -15,11 +19,20 @@ from flowblueprint import __version__
 from flowblueprint.drawio import render_drawio_str
 from flowblueprint.flow import build_flow
 from flowblueprint.layout import layout_flow
+from flowblueprint.mermaid import render_markdown_str, render_mermaid_str
 from flowblueprint.model import Branch, Diagram, Flow, Item, Loop, Step
+from flowblueprint.overview import layout_project
+from flowblueprint.page import render_html_str
+from flowblueprint.project import load_project
 from flowblueprint.rules import check_diagram
 from flowblueprint.source import load_script
 from flowblueprint.svg import render_svg_str
 from flowblueprint.summary import apply_groups_list, summarise_items_list
+
+OUTPUT_SUFFIXES_TUPLE = (".drawio", ".svg", ".html", ".md", ".mmd")
+# Mermaid places shapes itself, so its flows are laid out in one column.
+MERMAID_SUFFIXES_TUPLE = (".md", ".mmd")
+SINGLE_COLUMN_BLOCKS_INT = 1_000_000
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -30,12 +43,16 @@ def build_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(
         prog="flowblueprint",
-        description="Turn a Python script into a block-diagram "
-                    "architecture (draw.io) without running it.")
-    parser.add_argument("script", type=Path, help="the .py file to draw")
+        description="Turn a Python script, notebook or project folder "
+                    "into a block-diagram architecture without running "
+                    "it.")
+    parser.add_argument("script", type=Path, metavar="PATH",
+                        help="a .py script, an .ipynb notebook or a "
+                             "project folder")
     parser.add_argument("-o", "--output", type=Path,
-                        help="output file: .drawio (editable, default next"
-                             " to the script) or .svg (image preview)")
+                        help="output file: .drawio (editable, the default),"
+                             " .svg (image), .html (web page), .md "
+                             "(Markdown with Mermaid) or .mmd (Mermaid)")
     parser.add_argument("--force", action="store_true",
                         help="overwrite an existing output file")
     parser.add_argument("--overrides", type=Path,
@@ -50,6 +67,8 @@ def build_parser() -> argparse.ArgumentParser:
                              "(default 4)")
     parser.add_argument("--max-blocks", type=int, default=10,
                         help="most blocks per column (default 10)")
+    parser.add_argument("--include-tests", action="store_true",
+                        help="folders: also draw test files and folders")
     parser.add_argument("--check", action="store_true",
                         help="only check; exit 1 on rule errors")
     parser.add_argument("--version", action="version",
@@ -133,6 +152,95 @@ def report_findings_bool(script: Path, flow: Flow, diagram: Diagram,
     return any(finding.severity == "error" for finding in findings_list)
 
 
+def render_output_str(output: Path, diagram: Diagram,
+                      notes_list: list[str]) -> str:
+    """Render a diagram in the format the output suffix names.
+
+    Args:
+        output: The output file.
+        diagram: The diagram (one column for Mermaid formats).
+        notes_list: Lines about what the diagram leaves out.
+
+    Returns:
+        The file text.
+    """
+    suffix_str = output.suffix.lower()
+    if suffix_str == ".svg":
+        return render_svg_str(diagram)
+    if suffix_str == ".html":
+        return render_html_str(diagram, notes_list)
+    if suffix_str == ".md":
+        return render_markdown_str(diagram, notes_list)
+    if suffix_str == ".mmd":
+        return render_mermaid_str(diagram)
+    return render_drawio_str(diagram)
+
+
+def write_output_int(output: Path, text_str: str, force: bool,
+                     summary_str: str) -> int:
+    """Write the rendered file unless that would overwrite one.
+
+    Args:
+        output: The output file.
+        text_str: Its text.
+        force: Whether an existing file may be replaced.
+        summary_str: What was written, for the success message.
+
+    Returns:
+        0 when written, 2 when refused.
+    """
+    if output.exists() and not force:
+        print(f"flowblueprint: {output} exists; use --force to replace it",
+              file=sys.stderr)
+        return 2
+    output.write_text(text_str, encoding="utf-8")
+    print(f"wrote {output} ({summary_str})")
+    return 0
+
+
+def check_output_suffix_bool(output: Path | None) -> bool:
+    """Whether an output path has a supported suffix.
+
+    Args:
+        output: The --output path, or None for the default.
+
+    Returns:
+        True when supported; otherwise an error is printed.
+    """
+    if output is None or output.suffix.lower() in OUTPUT_SUFFIXES_TUPLE:
+        return True
+    print(f"flowblueprint: unknown output format {output.suffix!r}; use "
+          f"one of {', '.join(OUTPUT_SUFFIXES_TUPLE)}", file=sys.stderr)
+    return False
+
+
+def run_project_int(arguments: argparse.Namespace) -> int:
+    """Draw a project folder's overview.
+
+    Args:
+        arguments: The parsed command line.
+
+    Returns:
+        The exit code.
+    """
+    folder = arguments.script
+    project = load_project(folder, arguments.include_tests)
+    for note_str in project.notes:
+        print(f"{folder}: note: {note_str}")
+    if not project.files:
+        print(f"flowblueprint: no Python files or notebooks in {folder}",
+              file=sys.stderr)
+        return 2
+    if arguments.check:
+        return 0
+    diagram = layout_project(project)
+    output = arguments.output or folder / "architecture.drawio"
+    return write_output_int(
+        output, render_output_str(output, diagram, project.notes),
+        arguments.force, f"{len(project.files)} files, "
+                         f"{len(project.edges)} imports")
+
+
 def main(argv_list: list[str] | None = None) -> int:
     """Run the command line.
 
@@ -144,6 +252,10 @@ def main(argv_list: list[str] | None = None) -> int:
     """
     arguments = build_parser().parse_args(argv_list)
     script = arguments.script
+    if not check_output_suffix_bool(arguments.output):
+        return 2
+    if script.is_dir():
+        return run_project_int(arguments)
     try:
         flow = load_flow(script, arguments.overrides, arguments.level,
                          arguments.group_size)
@@ -158,16 +270,13 @@ def main(argv_list: list[str] | None = None) -> int:
     if arguments.check:
         return 1 if has_errors else 0
     output = arguments.output or script.with_suffix(".drawio")
-    if output.exists() and not arguments.force:
-        print(f"flowblueprint: {output} exists; use --force to replace it",
-              file=sys.stderr)
-        return 2
-    renderer = (render_svg_str if output.suffix.lower() == ".svg"
-                else render_drawio_str)
-    output.write_text(renderer(diagram), encoding="utf-8")
-    print(f"wrote {output} ({len(diagram.nodes)} shapes, "
-          f"{diagram.column_count} column(s))")
-    return 0
+    if output.suffix.lower() in MERMAID_SUFFIXES_TUPLE:
+        diagram = layout_flow(flow, SINGLE_COLUMN_BLOCKS_INT)
+    notes_list = [f"line {note.line}: {note.message}" for note in flow.notes]
+    return write_output_int(
+        output, render_output_str(output, diagram, notes_list),
+        arguments.force, f"{len(diagram.nodes)} shapes, "
+                         f"{diagram.column_count} column(s)")
 
 
 if __name__ == "__main__":

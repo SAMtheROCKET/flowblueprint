@@ -1,0 +1,19 @@
+# Changelog
+
+## 0.2.0a0 - Projects, Mermaid and HTML, 2026-10-06
+
+- `flowblueprint FOLDER` draws a project overview: one block per script,
+  module, package and notebook, an arrow for each import between project
+  files (absolute, relative, sibling-script and `src` layouts), entry
+  points on top, and per-file summaries with the data each file reads
+  and writes. Tests are skipped unless `--include-tests` is given.
+- New output formats chosen by the `-o` suffix: `.md` (Markdown with a
+  Mermaid flowchart, rendered by GitHub and GitLab), `.mmd` (Mermaid
+  text) and `.html` (a self-contained page). Unknown suffixes are refused.
+- Mermaid labels escape quotes, angle brackets, pipes and backticks.
+
+## 0.1.0a0 - First alpha, 2026-10-06
+
+- Scripts and notebooks to draw.io and SVG block diagrams with inputs,
+  outputs, data types, loops, decisions, data sources and plots;
+  detailed and summary levels; override files; diagram rule checks.

@@ -98,6 +98,8 @@ def build_edge_style_str(edge: Edge, nodes_dict: dict[str, Node]) -> str:
     style_str = EDGE_STYLE_STR
     if edge.is_side:
         return style_str + "exitX=1;exitY=0.5;entryX=0;entryY=0.5;"
+    if edge.enters_top and target.y_px > source.y_px + source.height:
+        return style_str + "exitX=0.5;exitY=1;entryX=0.5;entryY=0;"
     if source.kind == DECISION_KIND and edge.label == "Yes":
         style_str += "exitX=1;exitY=0.5;"
     elif source.kind == DECISION_KIND and edge.label == "No":

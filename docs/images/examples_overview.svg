@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="406" viewBox="0 0 520 406" font-family="Helvetica, Arial, sans-serif" font-size="11">
+<title>examples architecture</title>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222222"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<polyline points="360.0,178.0 360.0,232.0 360.0,232.0 360.0,248.0" fill="none" stroke="#222222" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="20.0" y="60.0" width="40.0" height="24.0" fill="#d5e8d4" stroke="#222222" stroke-width="1.2"/>
+<text x="70.0" y="76.0" text-anchor="start">entry point (runs)</text>
+<rect x="20.0" y="94.0" width="40.0" height="24.0" fill="#dae8fc" stroke="#222222" stroke-width="1.2"/>
+<text x="70.0" y="110.0" text-anchor="start">module</text>
+<text x="360.0" y="36.0" text-anchor="middle">examples architecture</text>
+<rect x="240.0" y="60.0" width="240.0" height="118.0" fill="#d5e8d4" stroke="#222222" stroke-width="1.2"/><text x="360.0" y="85.5" text-anchor="middle" font-weight="bold">station_report.py</text><text x="360.0" y="100.5" text-anchor="middle">entry point: 3 functions</text><text x="360.0" y="115.5" text-anchor="middle">Synthetic example: summarise heat</text><text x="360.0" y="130.5" text-anchor="middle">events per weather station.</text><text x="360.0" y="145.5" text-anchor="middle">writes: heat_summary.csv and</text><text x="360.0" y="160.5" text-anchor="middle">hot_hours.png</text>
+<rect x="240.0" y="248.0" width="240.0" height="118.0" fill="#dae8fc" stroke="#222222" stroke-width="1.2"/><text x="360.0" y="273.5" text-anchor="middle" font-weight="bold">station_utils.py</text><text x="360.0" y="288.5" text-anchor="middle">module: 3 functions</text><text x="360.0" y="303.5" text-anchor="middle">Helpers for the synthetic</text><text x="360.0" y="318.5" text-anchor="middle">weather-station example (never</text><text x="360.0" y="333.5" text-anchor="middle">executed).</text><text x="360.0" y="348.5" text-anchor="middle">reads: *.parquet</text>
+</svg>
