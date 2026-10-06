@@ -19,7 +19,7 @@ from flowblueprint.model import (
 from flowblueprint.rules import check_diagram
 from flowblueprint.source import load_script
 from flowblueprint.summary import apply_groups_list, summarise_items_list
-from flowblueprint.svg import render_svg_str
+from flowblueprint.svg import render_svg_str, route_points_list
 from flowblueprint.grouping import choose_group_depth_int, group_project
 from flowblueprint.mermaid import render_mermaid_str
 from flowblueprint.overview import layout_project
@@ -573,6 +573,30 @@ class ProjectTests(unittest.TestCase):
                         and second.x_px < first.x_px + first.width
                         and first.y_px < second.y_px + second.height
                         and second.y_px < first.y_px + first.height)
+
+    def test_arrows_that_skip_rows_go_around_blocks(self):
+        folder = write_tree({
+            "run.py": "import a\nimport c\nif __name__ == '__main__':\n"
+                      "    a.f()\n",
+            "a.py": "import b\ndef f(): ...\n",
+            "b.py": "import c\ndef g(): ...\n",
+            "c.py": "def h(): ...\n",
+        })
+        diagram = layout_project(load_project(folder))
+        nodes = {node.node_id: node for node in diagram.nodes}
+        blocks = [node for node in diagram.nodes
+                  if node.node_id.startswith("file")]
+        routed = [edge for edge in diagram.edges if edge.waypoints]
+        self.assertEqual(len(routed), 1)  # run.py -> c.py skips two rows
+        points = route_points_list(routed[0], nodes)
+        for (x1, y1), (x2, y2) in zip(points, points[1:]):
+            for block in blocks:  # no segment crosses a block's inside
+                inside_x = (min(x1, x2) < block.x_px + block.width
+                            and max(x1, x2) > block.x_px)
+                inside_y = (min(y1, y2) < block.y_px + block.height
+                            and max(y1, y2) > block.y_px)
+                self.assertFalse(inside_x and inside_y, block.label[0])
+        self.assertIn("<mxPoint", render_drawio_str(diagram))
 
     def test_unreadable_files_are_noted(self):
         folder = write_tree({"good.py": "x = 1\n", "bad.py": "def (:\n"})

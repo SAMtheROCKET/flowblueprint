@@ -124,8 +124,9 @@ Absolute, relative and sibling-script imports are resolved, including
 caches, build output and hidden folders are skipped; test files are
 skipped unless you pass `--include-tests`. Files that cannot be parsed
 are listed as notes instead of stopping the run. In the draw.io and SVG
-output, an arrow that skips rows can pass behind blocks in between; the
-Mermaid output is laid out by Mermaid itself.
+output, an arrow that skips rows runs in its own lane beside the blocks,
+so it never passes behind one; the Mermaid output is laid out by Mermaid
+itself.
 
 ## What you get
 

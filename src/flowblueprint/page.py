@@ -20,7 +20,7 @@ h1 { font-size: 22px; margin: 0 0 4px; }
 p.lead { margin: 0 0 16px; color: #4a5468; }
 figure { margin: 0; overflow-x: auto; background: #ffffff;
          border: 1px solid #d9dde5; border-radius: 6px; padding: 12px; }
-figure svg { display: block; max-width: none; }
+figure svg { display: block; max-width: 100%; height: auto; }
 h2 { font-size: 16px; margin: 24px 0 8px; }
 ul { margin: 0; padding-left: 20px; }
 footer { margin-top: 24px; font-size: 13px; color: #6b7487; }

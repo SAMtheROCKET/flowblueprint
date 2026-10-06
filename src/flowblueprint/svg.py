@@ -205,6 +205,22 @@ def route_down_list(source: Node, target: Node
             (target_mid_x, target.y_px)]
 
 
+def route_side_list(source: Node, target: Node
+                    ) -> list[tuple[float, float]]:
+    """Route a horizontal arrow to or from a data shape beside a block.
+
+    Args:
+        source: The source node.
+        target: The target node, beside the source.
+
+    Returns:
+        Two points at the middle of the overlapping heights.
+    """
+    middle_y = (max(source.y_px, target.y_px) + min(
+        source.y_px + source.height, target.y_px + target.height)) / 2
+    return [(source.x_px + source.width, middle_y), (target.x_px, middle_y)]
+
+
 def route_points_list(edge: Edge, nodes_dict: dict[str, Node]
                       ) -> list[tuple[float, float]]:
     """A right-angled route for an arrow.
@@ -217,16 +233,17 @@ def route_points_list(edge: Edge, nodes_dict: dict[str, Node]
         The route's points, from the source to the arrow tip.
     """
     source, target = nodes_dict[edge.source_id], nodes_dict[edge.target_id]
+    if edge.waypoints:
+        return [(source.x_px + source.width / 2, source.y_px + source.height),
+                *edge.waypoints,
+                (target.x_px + target.width / 2, target.y_px)]
     source_mid_x = source.x_px + source.width / 2
     target_mid_x = target.x_px + target.width / 2
     target_mid_y = target.y_px + target.height / 2
     if edge.enters_top and target.y_px > source.y_px + source.height:
         return route_down_list(source, target)
     if edge.is_side:
-        middle_y = (max(source.y_px, target.y_px) + min(
-            source.y_px + source.height, target.y_px + target.height)) / 2
-        return [(source.x_px + source.width, middle_y), (target.x_px,
-                                                          middle_y)]
+        return route_side_list(source, target)
     if source.kind == DECISION_KIND and edge.label == "Yes":
         start_tuple = (source.x_px + source.width,
                        source.y_px + source.height / 2)
@@ -257,7 +274,9 @@ def render_svg_str(diagram: Diagram) -> str:
         The SVG document text.
     """
     nodes_dict = {node.node_id: node for node in diagram.nodes}
-    width_float = max(node.x_px + node.width for node in diagram.nodes) + 40
+    width_float = max([node.x_px + node.width for node in diagram.nodes]
+                      + [point_tuple[0] for edge in diagram.edges
+                         for point_tuple in edge.waypoints]) + 40
     height_float = max(node.y_px + node.height
                        for node in diagram.nodes) + 40
     parts_list = [

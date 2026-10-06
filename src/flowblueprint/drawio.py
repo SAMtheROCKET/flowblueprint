@@ -167,8 +167,13 @@ def render_drawio_str(diagram: Diagram) -> str:
                              style=build_edge_style_str(edge, nodes_dict),
                              edge="1", parent="1", source=edge.source_id,
                              target=edge.target_id)
-        ET.SubElement(cell, "mxGeometry", relative="1",
-                      attrib={"as": "geometry"})
+        geometry = ET.SubElement(cell, "mxGeometry", relative="1",
+                                 attrib={"as": "geometry"})
+        if edge.waypoints:
+            points = ET.SubElement(geometry, "Array", attrib={"as": "points"})
+            for x_float, y_float in edge.waypoints:
+                ET.SubElement(points, "mxPoint", x=format_number_str(x_float),
+                              y=format_number_str(y_float))
     ET.indent(mxfile)
     return ET.tostring(mxfile, encoding="unicode") + "\n"
 

@@ -14,6 +14,9 @@
 - Sections: a notebook's Markdown headings and `# %% Title` cell markers
   in scripts (VS Code, Jupytext, Spyder) become dashed section banners;
   plain statements are no longer grouped across a section boundary.
+- Project overviews: arrows that skip rows are routed through lanes
+  beside the blocks (draw.io waypoints, SVG); HTML pages fit the image to
+  the page width.
 - Projects above 40 files are grouped into one block per sub-package
   (automatic depth, or `--group-depth N`; 0 draws every file).
 - A GitHub Action (`uses: SAMtheROCKET/flowblueprint@main`) and a

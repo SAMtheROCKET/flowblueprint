@@ -202,6 +202,8 @@ class Edge:
         is_side: True for arrows to and from data shapes beside a block.
         enters_top: True for arrows that always leave the bottom of the
             source and enter the top of the target (project overviews).
+        waypoints: Corner points between the source and the target, for
+            arrows routed around other blocks; [] lets renderers route.
     """
 
     source_id: str
@@ -209,6 +211,7 @@ class Edge:
     label: str = ""
     is_side: bool = False
     enters_top: bool = False
+    waypoints: list[tuple[float, float]] = field(default_factory=list)
 
 
 @dataclass

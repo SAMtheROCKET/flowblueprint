@@ -12,14 +12,14 @@ flowchart TD
     n3["<b>drawio.py</b><br/>module: 7 functions<br/>Render a Diagram as an uncompressed<br/>draw.io file."]:::module2
     n4["<b>grouping.py</b><br/>module: 5 functions<br/>Group a large project's files into<br/>one block per sub-package."]:::module2
     n5["<b>mermaid.py</b><br/>module: 6 functions<br/>Render a Diagram as a Mermaid<br/>flowchart."]:::module2
-    n6["<b>overview.py</b><br/>module: 9 functions<br/>Place a Project on a page as rows of<br/>files ordered by import depth."]:::module2
+    n6["<b>overview.py</b><br/>module: 10 functions<br/>Place a Project on a page as rows of<br/>files ordered by import depth."]:::module2
     n7["<b>page.py</b><br/>module: 1 function<br/>Render a Diagram as a self-contained<br/>HTML page."]:::module2
     n8["<b>rules.py</b><br/>module: 8 functions, 1 class<br/>Check a diagram against<br/>block-diagram architecture rules."]:::module2
     n9["<b>summary.py</b><br/>module: 10 functions<br/>Pack several steps into one<br/>higher-level block."]:::module2
     n10["<b>project.py</b><br/>module: 17 functions, 2 classes<br/>Draw a project overview: one block<br/>per script, module or notebook."]:::module2
     n11["<b>layout.py</b><br/>module: 6 functions, 3 classes<br/>Place a flow on a page, top to<br/>bottom and left to right."]:::module2
     n12["<b>__init__.py</b><br/>package<br/>FlowBlueprint: Python scripts,<br/>notebooks and projects to<br/>architecture."]:::module3
-    n13["<b>svg.py</b><br/>module: 10 functions<br/>Render a Diagram as a standalone SVG<br/>image."]:::module2
+    n13["<b>svg.py</b><br/>module: 11 functions<br/>Render a Diagram as a standalone SVG<br/>image."]:::module2
     n14["<b>flow.py</b><br/>module: 14 functions, 1 class<br/>Turn a script's entry point into an<br/>ordered flow of steps."]:::module2
     n15["<b>_version.py</b><br/>module<br/>FlowBlueprint version."]:::module2
     n16["<b>source.py</b><br/>module: 14 functions, 3 classes<br/>Read a script and the local modules<br/>it imports, without running them."]:::module2
