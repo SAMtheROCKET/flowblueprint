@@ -185,20 +185,25 @@ def route_upward_list(start_tuple: tuple[float, float], source: Node,
             (target.x_px, target_mid_y)]
 
 
-def route_down_list(source: Node, target: Node
+def route_down_list(source: Node, target: Node,
+                    waypoints_list: list[tuple[float, float]]
                     ) -> list[tuple[float, float]]:
     """Route an arrow from a block's bottom into the top of one below.
 
     Args:
         source: The source node.
         target: The target node, wholly below the source.
+        waypoints_list: Corner points chosen by the layout, or [].
 
     Returns:
-        Down from the source, across just above the target, then down
-        into it.
+        Down from the source, through the waypoints or across just
+        above the target, then down into it.
     """
     source_mid_x = source.x_px + source.width / 2
     target_mid_x = target.x_px + target.width / 2
+    if waypoints_list:
+        return [(source_mid_x, source.y_px + source.height), *waypoints_list,
+                (target_mid_x, target.y_px)]
     turn_y = target.y_px - 16.0
     return [(source_mid_x, source.y_px + source.height),
             (source_mid_x, turn_y), (target_mid_x, turn_y),
@@ -233,15 +238,12 @@ def route_points_list(edge: Edge, nodes_dict: dict[str, Node]
         The route's points, from the source to the arrow tip.
     """
     source, target = nodes_dict[edge.source_id], nodes_dict[edge.target_id]
-    if edge.waypoints:
-        return [(source.x_px + source.width / 2, source.y_px + source.height),
-                *edge.waypoints,
-                (target.x_px + target.width / 2, target.y_px)]
     source_mid_x = source.x_px + source.width / 2
     target_mid_x = target.x_px + target.width / 2
     target_mid_y = target.y_px + target.height / 2
-    if edge.enters_top and target.y_px > source.y_px + source.height:
-        return route_down_list(source, target)
+    if edge.waypoints or (edge.enters_top
+                          and target.y_px > source.y_px + source.height):
+        return route_down_list(source, target, edge.waypoints)
     if edge.is_side:
         return route_side_list(source, target)
     if source.kind == DECISION_KIND and edge.label == "Yes":
