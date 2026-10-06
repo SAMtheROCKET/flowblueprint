@@ -71,7 +71,7 @@ border:1px solid var(--accent)}
 <span class="status">0.2.0a0 on PyPI, experimental alpha</span>
 <h1>FlowBlueprint</h1>
 <p class="lead">Turn any Python script, Jupyter notebook or whole project into a clear architecture diagram, without running it.</p>
-<p><a class="button" href="https://github.com/SAMtheROCKET/flowblueprint">GitHub</a><a class="button secondary" href="https://pypi.org/project/flowblueprint/">PyPI</a></p>
+<p><a class="button" href="https://github.com/SAMtheROCKET/flowblueprint">GitHub</a><a class="button secondary" href="https://pypi.org/project/flowblueprint/">PyPI</a><a class="button secondary" href="https://marketplace.visualstudio.com/items?itemName=samtherocket.flowblueprint">VS Code</a></p>
 <pre><code>pip install flowblueprint</code></pre>
 <div class="commands"><div class="command"><pre><code>flowblueprint my_script.py</code></pre><span>my_script.drawio, editable in diagrams.net or VS Code</span></div><div class="command"><pre><code>flowblueprint analysis.ipynb -o FLOW.md</code></pre><span>Markdown with a Mermaid flowchart GitHub draws</span></div><div class="command"><pre><code>flowblueprint my_project/</code></pre><span>an overview of every file and the imports between them</span></div><div class="command"><pre><code>flowblueprint my_script.py --level summary -o overview.svg</code></pre><span>fewer, higher-level blocks as an image</span></div></div>
 <figure><img src="station_report_detailed.svg" alt="A FlowBlueprint diagram: start, settings, a loop over stations with coloured helper-module blocks, a Yes/No decision, outputs to CSV, JSON and a plot, and end" loading="lazy" width="900"><figcaption>A diagram drawn from a synthetic weather-station script.</figcaption></figure>

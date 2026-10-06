@@ -1,8 +1,11 @@
 # FlowBlueprint
 
 [![CI](https://github.com/SAMtheROCKET/flowblueprint/actions/workflows/ci.yml/badge.svg)](https://github.com/SAMtheROCKET/flowblueprint/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/flowblueprint?include_prereleases)](https://pypi.org/project/flowblueprint/)
+[![Python](https://img.shields.io/pypi/pyversions/flowblueprint)](https://pypi.org/project/flowblueprint/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Website](https://img.shields.io/badge/website-flowblueprint-informational)](https://samtherocket.github.io/flowblueprint/)
+[![VS Code](https://img.shields.io/visual-studio-marketplace/v/samtherocket.flowblueprint?label=VS%20Code)](https://marketplace.visualstudio.com/items?itemName=samtherocket.flowblueprint)
 
 **The Python architect: turn any Python script, Jupyter notebook or whole
 project folder into a clear architecture diagram (draw.io, SVG, HTML or
@@ -51,14 +54,14 @@ save it as an editable `.drawio.png`.
 
 ### In VS Code
 
-The FlowBlueprint extension (preview, in [`editor/flowblueprint`](editor/flowblueprint))
-adds **Draw architecture of this file** and **Draw architecture of this
+The [FlowBlueprint extension](https://marketplace.visualstudio.com/items?itemName=samtherocket.flowblueprint) (preview; search
+*FlowBlueprint* in the Extensions view) adds **Draw architecture of this file** and **Draw architecture of this
 project** to the Explorer's right-click menu and the Command Palette. Pick
 `.drawio`, `.svg`, `.html` or `.md` and the result opens straight away.
-Until it is on the Marketplace, install the `.vsix` attached to the
+It offers to install FlowBlueprint into your Python environment the
+first time. Offline, install the `.vsix` attached to the
 [GitHub release](https://github.com/SAMtheROCKET/flowblueprint/releases)
-with *Extensions: Install from VSIX*; it offers to install FlowBlueprint
-into your Python environment the first time.
+with *Extensions: Install from VSIX*.
 
 ## Office machines and older Python
 
