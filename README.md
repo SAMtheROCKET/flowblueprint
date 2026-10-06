@@ -25,13 +25,13 @@ and FlowBlueprint (architect).
 
 ![A detailed FlowBlueprint architecture: start, settings, a loop over stations with coloured helper-module blocks, a Yes/No decision, outputs to CSV, JSON and a plot, and end](https://raw.githubusercontent.com/SAMtheROCKET/flowblueprint/main/docs/images/station_report_detailed.svg)
 
-**Status: alpha.** 0.2.0a0 is an experimental alpha and is not on PyPI
-yet; install it from GitHub (below). Python 3.12 or newer is required. No LLM, account or network connection is needed.
+**Status: alpha.** 0.2.0a0 is an experimental alpha, published on
+PyPI. Python 3.12 or newer is required. No LLM, account or network connection is needed.
 
 ## Quick start
 
 ```bash
-pip install "git+https://github.com/SAMtheROCKET/flowblueprint"
+pip install flowblueprint
 flowblueprint my_script.py                  # writes my_script.drawio
 flowblueprint analysis.ipynb                # notebooks work too
 flowblueprint my_script.py --level summary  # fewer, higher-level blocks
@@ -41,8 +41,7 @@ flowblueprint my_project/                   # the whole project at a glance
 flowblueprint my_project/ -o ARCHITECTURE.md
 ```
 
-The GitHub install also installs FuncLoom and RefacTrail from PyPI. Once
-FlowBlueprint is published, `pip install flowblueprint` will do the same.
+`pip install flowblueprint` also installs FuncLoom and RefacTrail.
 
 <!-- GIF placeholder: docs/media/flowblueprint-script.gif
      About 20 s: `flowblueprint station_report.py`, then open
@@ -62,8 +61,8 @@ rights; [uv](https://docs.astral.sh/uv/) downloads its own Python 3.12
 into your user folder:
 
 ```bash
-uvx --python 3.12 --from "git+https://github.com/SAMtheROCKET/flowblueprint" flowblueprint my_script.py
-uv tool install --python 3.12 "git+https://github.com/SAMtheROCKET/flowblueprint"
+uvx --python 3.12 flowblueprint my_script.py
+uv tool install --python 3.12 flowblueprint
 flowblueprint my_project/ -o ARCHITECTURE.md
 ```
 

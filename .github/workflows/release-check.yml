@@ -1,0 +1,62 @@
+name: Release check
+# Builds the wheel and sdist once, then installs the identical wheel in a
+# clean environment on Linux, Windows and macOS and draws the example in
+# every output format. Nothing is uploaded; the files are run artifacts.
+on:
+  workflow_dispatch:
+  workflow_call:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install build twine
+      - run: python -m build --outdir dist
+      - run: python -m twine check --strict dist/*
+      - run: sha256sum dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flowblueprint-dist
+          path: dist/
+  verify:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ['3.12', '3.14']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: flowblueprint-dist
+          path: built
+      - name: Install the built wheel in a clean environment and draw
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/clean"
+          if [ -x "$RUNNER_TEMP/clean/bin/python" ]; then
+            CLEAN="$RUNNER_TEMP/clean/bin/python"
+          else
+            CLEAN="$RUNNER_TEMP/clean/Scripts/python.exe"
+          fi
+          "$CLEAN" -m pip install built/*.whl
+          "$CLEAN" -m flowblueprint --version
+          cd "$RUNNER_TEMP"
+          for suffix in drawio svg html md mmd; do
+            "$CLEAN" -m flowblueprint "$GITHUB_WORKSPACE/tests/examples/station_report.py" -o "check.$suffix"
+            test -s "check.$suffix"
+          done
+          "$CLEAN" -m flowblueprint "$GITHUB_WORKSPACE/tests/examples" -o overview.html
+          test -s overview.html

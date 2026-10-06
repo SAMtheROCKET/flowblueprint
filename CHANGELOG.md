@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0a0 - Projects, Mermaid and HTML, 2026-10-06
+## 0.2.0a0 - Projects, Mermaid and HTML, 2026-10-07
 
 - `flowblueprint FOLDER` draws a project overview: one block per script,
   module, package and notebook, an arrow for each import between project

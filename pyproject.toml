@@ -23,7 +23,7 @@ classifiers = [
     "Topic :: Software Development :: Documentation",
     "Topic :: Software Development :: Quality Assurance",
 ]
-dependencies = ["funcloom>=0.10.3a0,<0.11", "refactrail>=0.4.0a0,<0.5"]
+dependencies = ["funcloom>=0.10.3a0,<0.11", "refactrail>=0.4.0a0,<0.6"]
 
 [project.optional-dependencies]
 release = ["build>=1.2,<2", "setuptools>=77", "twine>=6,<7"]
