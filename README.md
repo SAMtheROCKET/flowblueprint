@@ -113,6 +113,12 @@ flowblueprint my_project/ --include-tests -o overview.html
 
 ![A project overview: an entry-point script above the helper module it imports, with the files each reads and writes](https://raw.githubusercontent.com/SAMtheROCKET/flowblueprint/main/docs/images/examples_overview.svg)
 
+Large projects stay readable: above 40 files, files are grouped into one
+block per sub-package (the deepest folder level that fits 40 blocks),
+each summing its files, functions, classes and data and naming the
+scripts it runs. `--group-depth 2` picks the level yourself;
+`--group-depth 0` draws every file.
+
 Absolute, relative and sibling-script imports are resolved, including
 `src` layouts and folders inside packages. Virtual environments,
 caches, build output and hidden folders are skipped; test files are
@@ -228,9 +234,9 @@ FlowBlueprint does.
 
 ## Roadmap
 
-- 0.3: richer notebook views (Markdown headings as sections), grouping
-  of sub-packages and cleaner arrow routing in large project overviews,
-  and more library knowledge for data types.
+- 0.3: richer notebook views (Markdown headings as sections), cleaner
+  arrow routing in large project overviews, and more library knowledge
+  for data types.
 - Later, optional: AI-written descriptions, always shown with their source
   evidence and never required.
 

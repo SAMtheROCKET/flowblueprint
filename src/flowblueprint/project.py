@@ -219,6 +219,8 @@ def check_location_label_bool(label_str: str) -> bool:
         True for file names with a data extension, and for paths and
         URLs written without spaces (not "folder / name" expressions).
     """
+    if any(mark_str in label_str for mark_str in ("'", '"')):
+        return False  # a bytes or string expression, not a location
     if " " not in label_str and any(
             mark_str in label_str for mark_str in ("/", "\\")):
         return True

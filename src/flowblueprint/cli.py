@@ -19,6 +19,7 @@ from flowblueprint import __version__
 from flowblueprint.drawio import render_drawio_str
 from flowblueprint.flow import build_flow
 from flowblueprint.layout import layout_flow
+from flowblueprint.grouping import choose_group_depth_int, group_project
 from flowblueprint.mermaid import render_markdown_str, render_mermaid_str
 from flowblueprint.model import Branch, Diagram, Flow, Item, Loop, Step
 from flowblueprint.overview import layout_project
@@ -67,13 +68,29 @@ def build_parser() -> argparse.ArgumentParser:
                              "(default 4)")
     parser.add_argument("--max-blocks", type=int, default=10,
                         help="most blocks per column (default 10)")
-    parser.add_argument("--include-tests", action="store_true",
-                        help="folders: also draw test files and folders")
     parser.add_argument("--check", action="store_true",
                         help="only check; exit 1 on rule errors")
     parser.add_argument("--version", action="version",
                         version=f"flowblueprint {__version__}")
+    add_folder_options_none(parser)
     return parser
+
+
+def add_folder_options_none(parser: argparse.ArgumentParser) -> None:
+    """Add the options that apply to project folders.
+
+    Args:
+        parser: The parser (changed in place).
+
+    Returns:
+        None.
+    """
+    parser.add_argument("--include-tests", action="store_true",
+                        help="folders: also draw test files and folders")
+    parser.add_argument("--group-depth", type=int, default=None,
+                        help="folders: one block per sub-package this many "
+                             "folders deep (default: automatic above 40 "
+                             "files; 0: one block per file)")
 
 
 def apply_overrides_none(items_list: list[Item], blocks_dict: dict) -> None:
@@ -233,6 +250,12 @@ def run_project_int(arguments: argparse.Namespace) -> int:
         return 2
     if arguments.check:
         return 0
+    depth_int = (choose_group_depth_int(project)
+                 if arguments.group_depth is None else arguments.group_depth)
+    if depth_int > 0:
+        project = group_project(project, depth_int)
+        print(f"grouped into {len(project.files)} blocks at folder depth "
+              f"{depth_int} (use --group-depth to change)")
     diagram = layout_project(project)
     output = arguments.output or folder / "architecture.drawio"
     return write_output_int(

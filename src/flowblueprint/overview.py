@@ -22,7 +22,7 @@ KIND_FILLS_DICT = {ENTRY_KIND: "#d5e8d4", NOTEBOOK_KIND: "#fff2cc",
                    MODULE_KIND: "#dae8fc", PACKAGE_KIND: "#e1d5e7"}
 KIND_LEGENDS_DICT = {ENTRY_KIND: "entry point (runs)",
                      NOTEBOOK_KIND: "notebook", MODULE_KIND: "module",
-                     PACKAGE_KIND: "package (__init__)"}
+                     PACKAGE_KIND: "package or folder"}
 ROW_GAP_FLOAT = 70.0
 BLOCK_GAP_FLOAT = 40.0
 KINDS_ORDER_TUPLE = (ENTRY_KIND, NOTEBOOK_KIND, PACKAGE_KIND, MODULE_KIND)
@@ -185,7 +185,10 @@ def build_file_label_list(info: FileInfo, skip_int: int = 0) -> list[str]:
                               f"{plural_str if count_int > 1 else ''}")
     kind_str = info.kind + (": " + ", ".join(sizes_list) if sizes_list
                             else "")
-    lines_list = ["/".join(info.path.parts[skip_int:]), kind_str]
+    title_str = "/".join(info.path.parts[skip_int:]) or info.path.name
+    if not info.path.suffix:
+        title_str += "/"  # a grouped folder
+    lines_list = [title_str, kind_str]
     for text_str in (info.summary,
                      "reads: " + name_some_str(info.reads) if info.reads
                      else "",

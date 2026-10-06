@@ -20,6 +20,7 @@ from flowblueprint.rules import check_diagram
 from flowblueprint.source import load_script
 from flowblueprint.summary import apply_groups_list, summarise_items_list
 from flowblueprint.svg import render_svg_str
+from flowblueprint.grouping import choose_group_depth_int, group_project
 from flowblueprint.mermaid import render_mermaid_str
 from flowblueprint.overview import layout_project
 from flowblueprint.page import render_html_str
@@ -558,6 +559,57 @@ class ProjectTests(unittest.TestCase):
         self.assertEqual([info.path.name for info in project.files],
                          ["good.py"])
         self.assertTrue(project.notes[0].startswith("bad.py: not drawn"))
+
+class GroupingTests(unittest.TestCase):
+    def setUp(self):
+        self.folder = write_tree({
+            "app.py": """
+                from pkg.sub import a
+                if __name__ == "__main__":
+                    a.run()
+            """,
+            "pkg/__init__.py": "",
+            "pkg/sub/__init__.py": '"""Readers."""\n',
+            "pkg/sub/a.py": """
+                from pkg.sub import b
+                from pkg.other import c
+                def run():
+                    b.load()
+            """,
+            "pkg/sub/b.py": """
+                import pandas as pd
+                def load():
+                    return pd.read_csv("input.csv")
+            """,
+            "pkg/other/c.py": "def helper(): ...\n",
+            "pkg/other/tool.py": "print('runs')\n",
+        })
+        self.project = load_project(self.folder)
+
+    def test_group_by_sub_package(self):
+        grouped = group_project(self.project, 2)
+        blocks = {info.path.as_posix(): info for info in grouped.files}
+        self.assertEqual(set(blocks), {"app.py", "pkg/__init__.py",
+                                       "pkg/sub", "pkg/other"})
+        self.assertEqual(blocks["pkg/sub"].kind, PACKAGE_KIND)
+        self.assertTrue(blocks["pkg/sub"].summary.startswith(
+            "Readers. 3 files:"))
+        self.assertEqual(blocks["pkg/sub"].reads, ["input.csv"])
+        self.assertIn("Runs: tool.py.", blocks["pkg/other"].summary)
+        names = {(grouped.files[source].path.as_posix(),
+                  grouped.files[target].path.as_posix())
+                 for source, target in grouped.edges}
+        self.assertEqual(names, {("app.py", "pkg/sub"),
+                                 ("pkg/sub", "pkg/other")})
+        diagram = layout_project(grouped)
+        titles = [node.label[0] for node in diagram.nodes
+                  if node.node_id.startswith("file")]
+        self.assertIn("pkg/sub/", titles)
+
+    def test_automatic_depth(self):
+        self.assertEqual(choose_group_depth_int(self.project), 0)
+        self.assertEqual(choose_group_depth_int(self.project, 4), 2)
+        self.assertEqual(choose_group_depth_int(self.project, 2), 1)
 
 class CommandLineTests(unittest.TestCase):
     def run_cli(self, *arguments: str) -> tuple[int, str]:
