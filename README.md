@@ -186,6 +186,36 @@ becomes a *Create the Pipeline* block, `pipeline.load()` resolves to the
 method and its docstring, and when the entry point only hands over to one
 method (`Pipeline(config).run()`), that method's steps are drawn.
 
+## Keep the diagram up to date
+
+In GitHub Actions, the FlowBlueprint action draws the diagram on every
+push; commit it, or keep it as a build artifact:
+
+```yaml
+- uses: actions/checkout@v4
+- uses: SAMtheROCKET/flowblueprint@main
+  with:
+    path: .                     # a script, notebook or folder
+    output: ARCHITECTURE.md     # .md, .mmd, .drawio, .svg or .html
+    args: --level summary       # optional extra options
+- uses: actions/upload-artifact@v4
+  with:
+    name: architecture
+    path: ARCHITECTURE.md
+```
+
+With [pre-commit](https://pre-commit.com), the
+`flowblueprint-architecture` hook redraws `ARCHITECTURE.md` whenever
+Python files or notebooks change:
+
+```yaml
+repos:
+  - repo: https://github.com/SAMtheROCKET/flowblueprint
+    rev: main
+    hooks:
+      - id: flowblueprint-architecture
+```
+
 ## Checks
 
 Every diagram is checked against block-diagram rules: start and end

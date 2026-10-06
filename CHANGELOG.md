@@ -16,6 +16,9 @@
   plain statements are no longer grouped across a section boundary.
 - Projects above 40 files are grouped into one block per sub-package
   (automatic depth, or `--group-depth N`; 0 draws every file).
+- A GitHub Action (`uses: SAMtheROCKET/flowblueprint@main`) and a
+  pre-commit hook (`flowblueprint-architecture`) keep a project's
+  ARCHITECTURE.md up to date.
 - Robustness sweep: all 584 standard-library and 6,988 corpus files and
   92 corpus packages are drawn and rendered without an error.
 

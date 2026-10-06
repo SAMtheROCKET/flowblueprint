@@ -1,0 +1,43 @@
+name: FlowBlueprint architecture diagram
+description: >-
+  Draw the architecture of a Python project, script or Jupyter notebook
+  (Mermaid Markdown, draw.io, SVG or HTML) without running the code.
+author: Sambit Supriya Dash
+branding:
+  icon: git-merge
+  color: blue
+inputs:
+  path:
+    description: Script, notebook or project folder to draw.
+    default: "."
+  output:
+    description: Output file; its suffix picks the format (.md, .mmd, .drawio, .svg, .html).
+    default: ARCHITECTURE.md
+  args:
+    description: Further options, for example "--level summary" or "--group-depth 1".
+    default: ""
+  python-version:
+    description: Python version used to run FlowBlueprint (3.12 or newer).
+    default: "3.12"
+outputs:
+  file:
+    description: The diagram file that was written.
+    value: ${{ inputs.output }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Install FlowBlueprint
+      shell: bash
+      run: python -m pip install --quiet "$GITHUB_ACTION_PATH"
+    - name: Draw the architecture
+      shell: bash
+      env:
+        FB_PATH: ${{ inputs.path }}
+        FB_OUTPUT: ${{ inputs.output }}
+        FB_ARGS: ${{ inputs.args }}
+      run: |
+        read -r -a extra_args <<< "$FB_ARGS"
+        python -m flowblueprint "$FB_PATH" -o "$FB_OUTPUT" --force "${extra_args[@]}"

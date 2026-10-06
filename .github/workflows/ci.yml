@@ -46,3 +46,18 @@ jobs:
           "$CLEAN" -m flowblueprint "$GITHUB_WORKSPACE/tests/examples/station_report.py" -o check.md
           "$CLEAN" -m flowblueprint "$GITHUB_WORKSPACE/tests/examples" -o overview.html
           test -s check.drawio && test -s check.svg && test -s check.md && test -s overview.html
+  action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: draw
+        uses: ./
+        with:
+          path: tests/examples
+          output: ${{ runner.temp }}/ARCHITECTURE.md
+          args: --group-depth 0
+      - name: Check the action's output
+        shell: bash
+        run: |
+          grep -q '```mermaid' "${{ steps.draw.outputs.file }}"
+          grep -q 'station_report.py' "${{ steps.draw.outputs.file }}"

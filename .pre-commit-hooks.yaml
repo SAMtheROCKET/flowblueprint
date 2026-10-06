@@ -1,0 +1,13 @@
+# pre-commit hook: add this repository to a project's
+# .pre-commit-config.yaml. The hook redraws ARCHITECTURE.md (a Mermaid
+# diagram GitHub renders) when Python files or notebooks change; the
+# output is deterministic, so an unchanged project leaves it as it is.
+# Override `args` to draw another path or format.
+- id: flowblueprint-architecture
+  name: FlowBlueprint architecture
+  description: Redraw the project's architecture diagram.
+  entry: flowblueprint
+  args: [".", "-o", "ARCHITECTURE.md", "--force"]
+  language: python
+  pass_filenames: false
+  files: \.(py|ipynb)$
