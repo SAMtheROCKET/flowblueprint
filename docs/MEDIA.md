@@ -2,6 +2,8 @@
 
 Planned recordings, where they go in README.md, and how to make them.
 
+**Status:** All three GIFs are in place: the terminal parts are real command output, and the diagram frames are screenshots of the real SVG, HTML and Mermaid outputs. They were rendered from real command output in a scripted terminal, so re-make them after a release if the output changes. Optional: a VS Code clip of editing the .drawio file.
+
 | File (docs/media/) | Where | What to show | Length | How |
 | --- | --- | --- | --- | --- |
 | `flowblueprint-script.gif` | Quick start | `flowblueprint tests/examples/station_report.py`, open the .drawio in VS Code (Draw.io Integration), move a block | ~20 s | ScreenToGif |

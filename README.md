@@ -43,10 +43,7 @@ flowblueprint my_project/ -o ARCHITECTURE.md
 
 `pip install flowblueprint` also installs FuncLoom and RefacTrail.
 
-<!-- GIF placeholder: docs/media/flowblueprint-script.gif
-     About 20 s: `flowblueprint station_report.py`, then open
-     station_report.drawio in VS Code (Draw.io Integration) and move a
-     block. See docs/MEDIA.md. -->
+![FlowBlueprint draws station_report.py as a detailed SVG, then as a summary with packed blocks](https://raw.githubusercontent.com/SAMtheROCKET/flowblueprint/main/docs/media/flowblueprint-script.gif)
 
 Open the `.drawio` file in [diagrams.net](https://app.diagrams.net) or the
 VS Code *Draw.io Integration* extension, where you can edit it freely or
@@ -127,9 +124,7 @@ flowchart TD
 
 ## Whole projects
 
-<!-- GIF placeholder: docs/media/flowblueprint-project.gif
-     About 20 s: `flowblueprint my_project/ -o overview.html`, open it in a
-     browser and zoom into one block. See docs/MEDIA.md. -->
+![FlowBlueprint draws a whole project as an HTML overview of every file, its imports and data](https://raw.githubusercontent.com/SAMtheROCKET/flowblueprint/main/docs/media/flowblueprint-project.gif)
 
 Point FlowBlueprint at a folder to see the whole project: one block per
 script, module, package and notebook, with an arrow from each file to
@@ -226,9 +221,7 @@ FlowBlueprint's own [ARCHITECTURE.md](ARCHITECTURE.md) is drawn this way
 
 ## Keep the diagram up to date
 
-<!-- GIF placeholder: docs/media/flowblueprint-mermaid.gif
-     About 20 s: `flowblueprint analysis.ipynb -o FLOW.md`, commit and
-     push, then the rendered diagram on GitHub. See docs/MEDIA.md. -->
+![FlowBlueprint writes FLOW.md with a Mermaid diagram, which GitHub renders as a flowchart](https://raw.githubusercontent.com/SAMtheROCKET/flowblueprint/main/docs/media/flowblueprint-mermaid.gif)
 
 In GitHub Actions, the FlowBlueprint action draws the diagram on every
 push; commit it, or keep it as a build artifact:
