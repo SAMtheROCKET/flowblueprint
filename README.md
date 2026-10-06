@@ -28,61 +28,97 @@ and FlowBlueprint (architect).
 
 ![A detailed FlowBlueprint architecture: start, settings, a loop over stations with coloured helper-module blocks, a Yes/No decision, outputs to CSV, JSON and a plot, and end](https://raw.githubusercontent.com/SAMtheROCKET/flowblueprint/main/docs/images/station_report_detailed.svg)
 
-**Status: alpha.** 0.2.0a0 is an experimental alpha, published on
-PyPI. Python 3.12 or newer is required. No LLM, account or network connection is needed.
+**Status:** alpha, version 0.2.1a0 on PyPI. Free and open source (MIT).
+Works offline: no AI model, account or internet connection needed.
 
-## Quick start
+## Start in one minute
 
-```bash
-pip install flowblueprint
-flowblueprint my_script.py                  # writes my_script.drawio
-flowblueprint analysis.ipynb                # notebooks work too
-flowblueprint my_script.py --level summary  # fewer, higher-level blocks
-flowblueprint my_script.py -o overview.svg  # an image for slides/READMEs
-flowblueprint my_script.py -o FLOW.md       # Mermaid: renders on GitHub
-flowblueprint my_project/                   # the whole project at a glance
-flowblueprint my_project/ -o ARCHITECTURE.md
-```
+1. **Install** (needs Python 3.12 or newer;
+   [older Python? see below](#your-project-uses-an-older-python)):
 
-`pip install flowblueprint` also installs FuncLoom and RefacTrail.
+   ```bash
+   pip install flowblueprint
+   ```
+
+2. **Draw your script, notebook or whole project:**
+
+   ```bash
+   flowblueprint my_script.py                  # writes my_script.drawio
+   flowblueprint my_notebook.ipynb -o flow.svg # an image for slides
+   flowblueprint my_project/ -o ARCHITECTURE.md  # renders on GitHub
+   ```
+
+3. **Open the result.** `.drawio` opens (and stays editable) in
+   [diagrams.net](https://app.diagrams.net) or VS Code's *Draw.io
+   Integration* extension; `.svg` and `.html` open in any browser; `.md`
+   shows the diagram on GitHub and GitLab. Your code is never run or
+   changed.
 
 ![FlowBlueprint draws station_report.py as a detailed SVG, then as a summary with packed blocks](https://raw.githubusercontent.com/SAMtheROCKET/flowblueprint/main/docs/media/flowblueprint-script.gif)
 
-Open the `.drawio` file in [diagrams.net](https://app.diagrams.net) or the
-VS Code *Draw.io Integration* extension, where you can edit it freely or
-save it as an editable `.drawio.png`.
+Too many blocks? Add `--level summary` for a higher-level picture.
+`pip install flowblueprint` also installs FuncLoom and RefacTrail.
 
-### In VS Code
+## In VS Code
 
-The [FlowBlueprint extension](https://marketplace.visualstudio.com/items?itemName=samtherocket.flowblueprint) (preview; search
-*FlowBlueprint* in the Extensions view) adds **Draw architecture of this file** and **Draw architecture of this
-project** to the Explorer's right-click menu and the Command Palette. Pick
-`.drawio`, `.svg`, `.html` or `.md` and the result opens straight away.
-It offers to install FlowBlueprint into your Python environment the
-first time. Offline, install the `.vsix` attached to the
-[GitHub release](https://github.com/SAMtheROCKET/flowblueprint/releases)
-with *Extensions: Install from VSIX*.
+1. Install **[FlowBlueprint](https://marketplace.visualstudio.com/items?itemName=samtherocket.flowblueprint)** from the
+   Extensions view (search *FlowBlueprint*).
+2. **Right-click** a `.py` file, a notebook or a folder in the Explorer
+   and choose **Draw architecture of this file** (or **of this project**).
+   The Command Palette (**Ctrl+Shift+P**, type **FlowBlueprint**) works
+   too.
+3. Pick a format (`.drawio`, `.svg`, `.html` or `.md`). The diagram is
+   saved next to your file (`architecture.<format>` for a folder) and
+   opens straight away. The first time, click **Install** when asked.
 
-## Office machines and older Python
+## What's new in 0.2.1a0
 
-FlowBlueprint needs Python 3.12 or newer, but your project does not: the tool
-only reads your code, so it can run on its own Python next to a project
-that stays on 3.9, 3.10 or 3.11. Neither of these needs administrator
-rights; [uv](https://docs.astral.sh/uv/) downloads its own Python 3.12
-into your user folder:
+- **New VS Code extension** on the Marketplace: right-click to draw a
+  file or a whole project.
+- **Older-Python projects:** a step-by-step
+  [guide](https://github.com/SAMtheROCKET/flowblueprint/blob/main/docs/OLDER_PYTHON.md), tested with code for Python 3.8, 3.9 and
+  3.10.
+- **A simpler README.** Drawing is unchanged; 0.2.0a0's project
+  overviews, Mermaid and HTML output are in the [changelog](https://github.com/SAMtheROCKET/flowblueprint/blob/main/CHANGELOG.md).
 
-```bash
-uvx --python 3.12 flowblueprint my_script.py
-uv tool install --python 3.12 flowblueprint
-flowblueprint my_project/ -o ARCHITECTURE.md
-```
+## Your project uses an older Python?
 
-`pipx install --python <path to a Python 3.12> flowblueprint` works the same
-way. If `pip` says `from versions: none`, your Python is older than 3.12
-or pip is pointed at a company mirror that does not carry the package
-(check with `python -m pip config list`, and ask IT to allow it).
+No problem. FlowBlueprint only **reads** your code, so it runs on its own
+Python 3.12 or newer while your project stays on Python 3.8, 3.9, 3.10 or
+3.11. Do this once:
 
-Step by step, with the VS Code settings and the limits: [using the tools on older-Python projects](https://github.com/SAMtheROCKET/flowblueprint/blob/main/docs/OLDER_PYTHON.md).
+1. **Make a separate Python for the tools** (no admin rights needed):
+
+   ```bash
+   # Windows (Command Prompt)
+   py -3.12 -m venv %USERPROFILE%\py-tools
+   %USERPROFILE%\py-tools\Scripts\python -m pip install flowblueprint
+
+   # macOS / Linux
+   python3.12 -m venv ~/py-tools
+   ~/py-tools/bin/python -m pip install flowblueprint
+   ```
+
+   No Python 3.12 on the machine? Run `pip install uv`, then
+   `uvx --python 3.12 flowblueprint my_script.py`: uv downloads Python 3.12 for you.
+
+2. **Run FlowBlueprint with that Python:**
+
+   ```bash
+   %USERPROFILE%\py-tools\Scripts\python -m flowblueprint my_script.py     # Windows
+   ~/py-tools/bin/python -m flowblueprint my_script.py                       # macOS / Linux
+   ```
+
+3. **In VS Code**, open Settings, search for `flowblueprint.pythonPath` and paste
+   the path of that Python (for example
+   `C:\Users\YOU\py-tools\Scripts\python.exe`).
+
+Your project keeps using its own Python to run. More detail, limits and
+fixes for common errors: [the older-Python guide](https://github.com/SAMtheROCKET/flowblueprint/blob/main/docs/OLDER_PYTHON.md).
+
+If `pip install flowblueprint` says `from versions: none`, your Python is older
+than 3.12 (use the steps above) or your company's package mirror does not
+carry it yet (ask IT to allow it).
 
 ## Output formats
 

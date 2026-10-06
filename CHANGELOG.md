@@ -1,13 +1,20 @@
 # Changelog
 
-## Unreleased
+## 0.2.1a0 - VS Code extension and a simpler README, 2026-10-07
 
 - VS Code extension (preview, `editor/flowblueprint`): *Draw architecture
   of this file* and *Draw architecture of this project* from the Explorer
   or the Command Palette, in draw.io, SVG, HTML or Markdown, with the
   result opened straight away. It offers to install FlowBlueprint into the
   selected interpreter on first use and replaces an existing diagram only
-  after confirmation.
+  after confirmation. It is on the Marketplace (publisher samtherocket)
+  with an icon; `scripts/package_editor.py` writes the same VSIX layout
+  as Microsoft's vsce.
+- docs/OLDER_PYTHON.md: using FlowBlueprint on projects that stay on
+  Python 3.8-3.11 (tested on 3.8, 3.9 and 3.10).
+- The README starts with three steps (install, draw, open the result), a
+  VS Code section and the older-Python steps; PyPI and VS Code badges.
+- No drawing changes.
 
 ## 0.2.0a0 - Projects, Mermaid and HTML, 2026-10-07
 

@@ -11,7 +11,7 @@ editor.
    Explorer, or run a **FlowBlueprint:** command from the Command Palette
    (Ctrl+Shift+P).
 3. The first time, if FlowBlueprint is not in your Python environment yet,
-   click **Install**. The extension runs `pip install flowblueprint==0.2.0a0`
+   click **Install**. The extension runs `pip install flowblueprint==0.2.1a0`
    in that interpreter (FuncLoom and RefacTrail come with it), and only
    after your click.
 

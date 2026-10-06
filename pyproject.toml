@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flowblueprint"
-version = "0.2.0a0"
+version = "0.2.1a0"
 description = "The Python architect: turn scripts, Jupyter notebooks and whole projects into architecture diagrams (draw.io, SVG, HTML, Mermaid) with inputs, outputs, dtypes, loops and decisions"
 readme = "README.md"
 requires-python = ">=3.12"

@@ -11,8 +11,8 @@
     "flowchart",
     "jupyter"
   ],
-  "version": "0.2.0",
-  "toolVersion": "0.2.0a0",
+  "version": "0.2.1",
+  "toolVersion": "0.2.1a0",
   "publisher": "samtherocket",
   "license": "MIT",
   "icon": "icon.png",
