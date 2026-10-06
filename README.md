@@ -291,9 +291,25 @@ push; commit it, or keep it as a build artifact:
     path: ARCHITECTURE.md
 ```
 
+To fail a pull request when someone changed the code but not the
+committed diagram, add `check: "true"`. Nothing is drawn; the step fails
+when `ARCHITECTURE.md` is missing or out of date, and passes otherwise:
+
+```yaml
+- uses: SAMtheROCKET/flowblueprint@main
+  with:
+    output: ARCHITECTURE.md
+    check: "true"
+```
+
+The same check on the command line is
+`flowblueprint . -o ARCHITECTURE.md --up-to-date` (exit code 1 when
+stale; line endings are ignored).
+
 With [pre-commit](https://pre-commit.com), the
 `flowblueprint-architecture` hook redraws `ARCHITECTURE.md` whenever
-Python files or notebooks change:
+Python files or notebooks change (or use
+`flowblueprint-architecture-check` to fail instead of redrawing):
 
 ```yaml
 repos:

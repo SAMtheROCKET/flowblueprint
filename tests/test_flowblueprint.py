@@ -688,6 +688,33 @@ class CommandLineTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertFalse((folder / "bad.drawio").exists())
 
+    def test_up_to_date_compares_without_writing(self):
+        folder = Path(tempfile.mkdtemp())
+        for source in (EXAMPLES, EXAMPLES / "station_report.py"):
+            target = folder / f"{source.stem}.md"
+            code, text = self.run_cli(str(source), "-o", str(target),
+                                      "--up-to-date")
+            self.assertEqual(code, 1)
+            self.assertIn("is missing", text)
+            self.assertFalse(target.exists())
+            self.assertEqual(self.run_cli(str(source), "-o",
+                                          str(target))[0], 0)
+            code, text = self.run_cli(str(source), "-o", str(target),
+                                      "--up-to-date")
+            self.assertEqual(code, 0, text)
+            self.assertIn("is up to date", text)
+            fresh = target.read_text(encoding="utf-8")
+            target.write_bytes(fresh.replace("\n", "\r\n").encode("utf-8"))
+            self.assertEqual(self.run_cli(str(source), "-o", str(target),
+                                          "--up-to-date")[0], 0)
+            target.write_text(fresh + "edited\n", encoding="utf-8")
+            code, text = self.run_cli(str(source), "-o", str(target),
+                                      "--up-to-date")
+            self.assertEqual(code, 1)
+            self.assertIn("is out of date", text)
+            self.assertTrue(target.read_text(encoding="utf-8")
+                            .endswith("edited\n"))
+
     def test_overrides_replace_descriptions(self):
         folder = Path(tempfile.mkdtemp())
         overrides = folder / "blueprint.toml"

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- `--up-to-date` draws nothing and exits 1 when the output file is
+  missing or differs from a fresh drawing (line endings ignored), for CI.
+  The GitHub Action gains `check: "true"` and pre-commit a
+  `flowblueprint-architecture-check` hook that use it.
+
 ## 0.2.1a0 - VS Code extension and a simpler README, 2026-10-07
 
 - VS Code extension (preview, `editor/flowblueprint`): *Draw architecture

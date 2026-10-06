@@ -68,12 +68,28 @@ def build_parser() -> argparse.ArgumentParser:
                              "(default 4)")
     parser.add_argument("--max-blocks", type=int, default=10,
                         help="most blocks per column (default 10)")
-    parser.add_argument("--check", action="store_true",
-                        help="only check; exit 1 on rule errors")
     parser.add_argument("--version", action="version",
                         version=f"flowblueprint {__version__}")
+    add_check_options_none(parser)
     add_folder_options_none(parser)
     return parser
+
+
+def add_check_options_none(parser: argparse.ArgumentParser) -> None:
+    """Add the options that check instead of writing.
+
+    Args:
+        parser: The parser (changed in place).
+
+    Returns:
+        None.
+    """
+    parser.add_argument("--check", action="store_true",
+                        help="only check; exit 1 on rule errors")
+    parser.add_argument("--up-to-date", action="store_true",
+                        help="write nothing; exit 1 when the output file "
+                             "is missing or differs from a fresh drawing "
+                             "(for CI)")
 
 
 def add_folder_options_none(parser: argparse.ArgumentParser) -> None:
@@ -215,6 +231,47 @@ def write_output_int(output: Path, text_str: str, force: bool,
     return 0
 
 
+def compare_output_int(output: Path, text_str: str) -> int:
+    """Report whether a saved diagram matches a fresh drawing.
+
+    Args:
+        output: The saved diagram file.
+        text_str: The freshly rendered text.
+
+    Returns:
+        0 when the file is up to date, 1 when it is missing or differs.
+    """
+    try:
+        current_str = output.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        current_str = None
+    if current_str == text_str:
+        print(f"{output} is up to date")
+        return 0
+    state_str = "is missing" if current_str is None else "is out of date"
+    print(f"flowblueprint: {output} {state_str}; redraw it with --force",
+          file=sys.stderr)
+    return 1
+
+
+def finish_output_int(arguments: argparse.Namespace, output: Path,
+                      text_str: str, summary_str: str) -> int:
+    """Write the drawing, or compare it with the saved file.
+
+    Args:
+        arguments: The parsed command line.
+        output: The output file.
+        text_str: The rendered text.
+        summary_str: What was drawn, for the success message.
+
+    Returns:
+        The exit code.
+    """
+    if arguments.up_to_date:
+        return compare_output_int(output, text_str)
+    return write_output_int(output, text_str, arguments.force, summary_str)
+
+
 def check_output_suffix_bool(output: Path | None) -> bool:
     """Whether an output path has a supported suffix.
 
@@ -258,10 +315,10 @@ def run_project_int(arguments: argparse.Namespace) -> int:
               f"{depth_int} (use --group-depth to change)")
     diagram = layout_project(project)
     output = arguments.output or folder / "architecture.drawio"
-    return write_output_int(
-        output, render_output_str(output, diagram, project.notes),
-        arguments.force, f"{len(project.files)} files, "
-                         f"{len(project.edges)} imports")
+    return finish_output_int(
+        arguments, output,
+        render_output_str(output, diagram, project.notes),
+        f"{len(project.files)} files, {len(project.edges)} imports")
 
 
 def main(argv_list: list[str] | None = None) -> int:
@@ -271,7 +328,8 @@ def main(argv_list: list[str] | None = None) -> int:
         argv_list: Arguments (default: sys.argv[1:]).
 
     Returns:
-        0 on success, 1 on rule errors with --check, 2 on input errors.
+        0 on success, 1 on rule errors with --check or a stale file with
+        --up-to-date, 2 on input errors.
     """
     arguments = build_parser().parse_args(argv_list)
     script = arguments.script
@@ -296,10 +354,9 @@ def main(argv_list: list[str] | None = None) -> int:
     if output.suffix.lower() in MERMAID_SUFFIXES_TUPLE:
         diagram = layout_flow(flow, SINGLE_COLUMN_BLOCKS_INT)
     notes_list = [f"line {note.line}: {note.message}" for note in flow.notes]
-    return write_output_int(
-        output, render_output_str(output, diagram, notes_list),
-        arguments.force, f"{len(diagram.nodes)} shapes, "
-                         f"{diagram.column_count} column(s)")
+    return finish_output_int(
+        arguments, output, render_output_str(output, diagram, notes_list),
+        f"{len(diagram.nodes)} shapes, {diagram.column_count} column(s)")
 
 
 if __name__ == "__main__":

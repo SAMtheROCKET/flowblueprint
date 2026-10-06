@@ -16,6 +16,11 @@ inputs:
   args:
     description: Further options, for example "--level summary" or "--group-depth 1".
     default: ""
+  check:
+    description: >-
+      "true" draws nothing and fails when the committed output file is
+      missing or out of date (use it in pull-request checks).
+    default: "false"
   python-version:
     description: Python version used to run FlowBlueprint (3.12 or newer).
     default: "3.12"
@@ -38,6 +43,12 @@ runs:
         FB_PATH: ${{ inputs.path }}
         FB_OUTPUT: ${{ inputs.output }}
         FB_ARGS: ${{ inputs.args }}
+        FB_CHECK: ${{ inputs.check }}
       run: |
         read -r -a extra_args <<< "$FB_ARGS"
-        python -m flowblueprint "$FB_PATH" -o "$FB_OUTPUT" --force "${extra_args[@]}"
+        if [ "$FB_CHECK" = "true" ]; then
+          mode=--up-to-date
+        else
+          mode=--force
+        fi
+        python -m flowblueprint "$FB_PATH" -o "$FB_OUTPUT" "$mode" "${extra_args[@]}"

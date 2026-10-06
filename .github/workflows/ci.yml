@@ -72,3 +72,27 @@ jobs:
         run: |
           grep -q '```mermaid' "${{ steps.draw.outputs.file }}"
           grep -q 'station_report.py' "${{ steps.draw.outputs.file }}"
+      - name: The check passes on the fresh diagram
+        uses: ./
+        with:
+          path: tests/examples
+          output: ${{ runner.temp }}/ARCHITECTURE.md
+          args: --group-depth 0
+          check: "true"
+      - name: Make the diagram stale
+        shell: bash
+        run: echo "edited" >> "${{ runner.temp }}/ARCHITECTURE.md"
+      - id: stale
+        name: The check fails on the stale diagram
+        continue-on-error: true
+        uses: ./
+        with:
+          path: tests/examples
+          output: ${{ runner.temp }}/ARCHITECTURE.md
+          args: --group-depth 0
+          check: "true"
+      - name: Confirm the stale diagram was detected and left alone
+        shell: bash
+        run: |
+          test "${{ steps.stale.outcome }}" = failure
+          tail -n 1 "${{ runner.temp }}/ARCHITECTURE.md" | grep -qx edited

@@ -11,3 +11,12 @@
   language: python
   pass_filenames: false
   files: \.(py|ipynb)$
+# Fails instead of redrawing when ARCHITECTURE.md is missing or stale.
+- id: flowblueprint-architecture-check
+  name: FlowBlueprint architecture is up to date
+  description: Fail when the architecture diagram is missing or stale.
+  entry: flowblueprint
+  args: [".", "-o", "ARCHITECTURE.md", "--up-to-date"]
+  language: python
+  pass_filenames: false
+  files: \.(py|ipynb)$
