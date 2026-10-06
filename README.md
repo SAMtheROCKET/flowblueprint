@@ -25,13 +25,13 @@ and FlowBlueprint (architect).
 
 ![A detailed FlowBlueprint architecture: start, settings, a loop over stations with coloured helper-module blocks, a Yes/No decision, outputs to CSV, JSON and a plot, and end](https://raw.githubusercontent.com/SAMtheROCKET/flowblueprint/main/docs/images/station_report_detailed.svg)
 
-**0.2.0a0 is an experimental alpha, not yet published.** Python 3.12 or
-newer is required. No LLM, account or network connection is needed.
+**Status: alpha.** 0.2.0a0 is an experimental alpha and is not on PyPI
+yet; install it from GitHub (below). Python 3.12 or newer is required. No LLM, account or network connection is needed.
 
 ## Quick start
 
 ```bash
-pip install flowblueprint
+pip install "git+https://github.com/SAMtheROCKET/flowblueprint"
 flowblueprint my_script.py                  # writes my_script.drawio
 flowblueprint analysis.ipynb                # notebooks work too
 flowblueprint my_script.py --level summary  # fewer, higher-level blocks
@@ -41,9 +41,36 @@ flowblueprint my_project/                   # the whole project at a glance
 flowblueprint my_project/ -o ARCHITECTURE.md
 ```
 
+The GitHub install also installs FuncLoom and RefacTrail from PyPI. Once
+FlowBlueprint is published, `pip install flowblueprint` will do the same.
+
+<!-- GIF placeholder: docs/media/flowblueprint-script.gif
+     About 20 s: `flowblueprint station_report.py`, then open
+     station_report.drawio in VS Code (Draw.io Integration) and move a
+     block. See docs/MEDIA.md. -->
+
 Open the `.drawio` file in [diagrams.net](https://app.diagrams.net) or the
 VS Code *Draw.io Integration* extension, where you can edit it freely or
 save it as an editable `.drawio.png`.
+
+## Office machines and older Python
+
+FlowBlueprint needs Python 3.12 or newer, but your project does not: the tool
+only reads your code, so it can run on its own Python next to a project
+that stays on 3.9, 3.10 or 3.11. Neither of these needs administrator
+rights; [uv](https://docs.astral.sh/uv/) downloads its own Python 3.12
+into your user folder:
+
+```bash
+uvx --python 3.12 --from "git+https://github.com/SAMtheROCKET/flowblueprint" flowblueprint my_script.py
+uv tool install --python 3.12 "git+https://github.com/SAMtheROCKET/flowblueprint"
+flowblueprint my_project/ -o ARCHITECTURE.md
+```
+
+`pipx install --python <path to a Python 3.12> flowblueprint` works the same
+way. If `pip` says `from versions: none`, your Python is older than 3.12
+or pip is pointed at a company mirror that does not carry the package
+(check with `python -m pip config list`, and ask IT to allow it).
 
 ## Output formats
 
@@ -100,6 +127,10 @@ flowchart TD
 ```
 
 ## Whole projects
+
+<!-- GIF placeholder: docs/media/flowblueprint-project.gif
+     About 20 s: `flowblueprint my_project/ -o overview.html`, open it in a
+     browser and zoom into one block. See docs/MEDIA.md. -->
 
 Point FlowBlueprint at a folder to see the whole project: one block per
 script, module, package and notebook, with an arrow from each file to
@@ -195,6 +226,10 @@ FlowBlueprint's own [ARCHITECTURE.md](ARCHITECTURE.md) is drawn this way
 (`flowblueprint src/flowblueprint -o ARCHITECTURE.md`).
 
 ## Keep the diagram up to date
+
+<!-- GIF placeholder: docs/media/flowblueprint-mermaid.gif
+     About 20 s: `flowblueprint analysis.ipynb -o FLOW.md`, commit and
+     push, then the rendered diagram on GitHub. See docs/MEDIA.md. -->
 
 In GitHub Actions, the FlowBlueprint action draws the diagram on every
 push; commit it, or keep it as a build artifact:
