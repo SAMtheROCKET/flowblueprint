@@ -4,6 +4,8 @@
 project folder into a clear architecture diagram (draw.io, SVG, HTML or
 Mermaid for your README), without running it.**
 
+Website: [samtherocket.github.io/flowblueprint](https://samtherocket.github.io/flowblueprint/)
+
 FlowBlueprint reads your code and draws how it flows: what runs first,
 which functions are called, what goes in and out of each step (with data
 types), where loops and decisions are, which files, databases and storage
