@@ -203,6 +203,13 @@ The code is parsed with Python's own `ast` module and is never imported or
 executed. The source file is never changed. Existing output files are not
 overwritten unless you pass `--force`.
 
+Robustness: every file of the Python 3.12 standard library (584 files) and
+of a 6,988-file corpus of installed packages (NumPy, SciPy, SymPy,
+matplotlib, Twisted and others) is drawn in detailed and summary form and
+rendered as draw.io, SVG and Mermaid without an error, as are project
+overviews of all 92 packages in that corpus (SymPy's 801 files and 6,404
+imports take under 5 seconds).
+
 ## How it fits with FuncLoom and RefacTrail
 
 FlowBlueprint installs FuncLoom and RefacTrail and uses them through
@@ -219,9 +226,9 @@ FlowBlueprint does.
 
 ## Roadmap
 
-- 0.3: richer notebook views (Markdown headings as sections), cleaner
-  arrow routing in large project overviews, and more library knowledge
-  for data types.
+- 0.3: richer notebook views (Markdown headings as sections), grouping
+  of sub-packages and cleaner arrow routing in large project overviews,
+  and more library knowledge for data types.
 - Later, optional: AI-written descriptions, always shown with their source
   evidence and never required.
 

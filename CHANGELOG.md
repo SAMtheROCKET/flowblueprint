@@ -11,6 +11,8 @@
   Mermaid flowchart, rendered by GitHub and GitLab), `.mmd` (Mermaid
   text) and `.html` (a self-contained page). Unknown suffixes are refused.
 - Mermaid labels escape quotes, angle brackets, pipes and backticks.
+- Robustness sweep: all 584 standard-library and 6,988 corpus files and
+  92 corpus packages are drawn and rendered without an error.
 
 ## 0.1.0a0 - First alpha, 2026-10-06
 
