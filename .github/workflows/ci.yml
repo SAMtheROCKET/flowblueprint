@@ -46,6 +46,17 @@ jobs:
           "$CLEAN" -m flowblueprint "$GITHUB_WORKSPACE/tests/examples/station_report.py" -o check.md
           "$CLEAN" -m flowblueprint "$GITHUB_WORKSPACE/tests/examples" -o overview.html
           test -s check.drawio && test -s check.svg && test -s check.md && test -s overview.html
+  editor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test editor/flowblueprint/test/runner.test.js editor/flowblueprint/test/setup.test.js
+      - run: node -e "require('./editor/flowblueprint/extension.js')"
+      - name: Package the extension
+        run: python3 scripts/package_editor.py --extension editor/flowblueprint --output "$RUNNER_TEMP/flowblueprint.vsix"
   action:
     runs-on: ubuntu-latest
     steps:

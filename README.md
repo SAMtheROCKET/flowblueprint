@@ -49,6 +49,17 @@ Open the `.drawio` file in [diagrams.net](https://app.diagrams.net) or the
 VS Code *Draw.io Integration* extension, where you can edit it freely or
 save it as an editable `.drawio.png`.
 
+### In VS Code
+
+The FlowBlueprint extension (preview, in [`editor/flowblueprint`](editor/flowblueprint))
+adds **Draw architecture of this file** and **Draw architecture of this
+project** to the Explorer's right-click menu and the Command Palette. Pick
+`.drawio`, `.svg`, `.html` or `.md` and the result opens straight away.
+Until it is on the Marketplace, install the `.vsix` attached to the
+[GitHub release](https://github.com/SAMtheROCKET/flowblueprint/releases)
+with *Extensions: Install from VSIX*; it offers to install FlowBlueprint
+into your Python environment the first time.
+
 ## Office machines and older Python
 
 FlowBlueprint needs Python 3.12 or newer, but your project does not: the tool

@@ -1,0 +1,118 @@
+{
+  "name": "flowblueprint",
+  "displayName": "FlowBlueprint",
+  "description": "FlowBlueprint, the Python architect: draw a script, notebook or whole project as a block diagram (draw.io, SVG, HTML or Mermaid) without running it. Experimental preview.",
+  "keywords": [
+    "python",
+    "architecture",
+    "diagram",
+    "drawio",
+    "mermaid",
+    "flowchart",
+    "jupyter"
+  ],
+  "version": "0.2.0",
+  "toolVersion": "0.2.0a0",
+  "publisher": "samtherocket",
+  "license": "MIT",
+  "preview": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Visualization"
+  ],
+  "main": "./extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false
+    },
+    "virtualWorkspaces": {
+      "supported": false
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "flowblueprint.drawFile",
+        "title": "FlowBlueprint: Draw architecture of this file"
+      },
+      {
+        "command": "flowblueprint.drawFolder",
+        "title": "FlowBlueprint: Draw architecture of this project"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "flowblueprint.drawFile",
+          "when": "resourceExtname == .py || resourceExtname == .ipynb",
+          "group": "flowblueprint"
+        },
+        {
+          "command": "flowblueprint.drawFolder",
+          "when": "explorerResourceIsFolder",
+          "group": "flowblueprint"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "flowblueprint.drawFile",
+          "when": "resourceExtname == .py || resourceExtname == .ipynb",
+          "group": "flowblueprint"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "FlowBlueprint",
+      "properties": {
+        "flowblueprint.pythonPath": {
+          "type": "string",
+          "default": "",
+          "description": "Python executable to use. Leave empty to use the interpreter selected in the Python extension (or python on PATH); relative paths resolve from the workspace root."
+        },
+        "flowblueprint.defaultFormat": {
+          "type": "string",
+          "enum": [
+            "drawio",
+            "svg",
+            "html",
+            "md"
+          ],
+          "enumDescriptions": [
+            "Editable draw.io diagram.",
+            "SVG image.",
+            "Self-contained web page.",
+            "Markdown with a Mermaid flowchart that GitHub and GitLab render."
+          ],
+          "default": "drawio",
+          "description": "Format offered first when drawing."
+        },
+        "flowblueprint.level": {
+          "type": "string",
+          "enum": [
+            "detailed",
+            "summary"
+          ],
+          "enumDescriptions": [
+            "One block per call.",
+            "Consecutive operations packed into fewer blocks."
+          ],
+          "default": "detailed",
+          "description": "Detail of a single file's flow."
+        }
+      }
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SAMtheROCKET/flowblueprint"
+  },
+  "scripts": {
+    "test": "node --test test/runner.test.js test/setup.test.js"
+  }
+}

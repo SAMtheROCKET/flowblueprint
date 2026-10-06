@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- VS Code extension (preview, `editor/flowblueprint`): *Draw architecture
+  of this file* and *Draw architecture of this project* from the Explorer
+  or the Command Palette, in draw.io, SVG, HTML or Markdown, with the
+  result opened straight away. It offers to install FlowBlueprint into the
+  selected interpreter on first use and replaces an existing diagram only
+  after confirmation.
+
 ## 0.2.0a0 - Projects, Mermaid and HTML, 2026-10-07
 
 - `flowblueprint FOLDER` draws a project overview: one block per script,
