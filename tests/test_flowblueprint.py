@@ -1,12 +1,15 @@
 """Regression tests for FlowBlueprint (standard-library unittest)."""
 
 import contextlib
+import importlib.util
 import io
 import json
 from pathlib import Path
 import tempfile
+import sys
 import textwrap
 import unittest
+from unittest import mock
 import xml.etree.ElementTree as ET
 
 from flowblueprint.cli import main
@@ -715,6 +718,35 @@ class CommandLineTests(unittest.TestCase):
             self.assertTrue(target.read_text(encoding="utf-8")
                             .endswith("edited\n"))
 
+    def test_png_without_the_renderer_explains_the_extra(self):
+        folder = Path(tempfile.mkdtemp())
+        target = folder / "flow.png"
+        with mock.patch.dict(sys.modules, {"resvg_py": None}):
+            code, text = self.run_cli(str(EXAMPLES / "station_report.py"),
+                                      "-o", str(target))
+        self.assertEqual(code, 2)
+        self.assertIn('pip install "flowblueprint[png]"', text)
+        self.assertFalse(target.exists())
+
+    @unittest.skipUnless(importlib.util.find_spec("resvg_py"),
+                         "PNG renderer (flowblueprint[png]) not installed")
+    def test_png_output_is_twice_the_svg_size(self):
+        folder = Path(tempfile.mkdtemp())
+        for source in (EXAMPLES / "station_report.py", EXAMPLES):
+            svg = folder / f"{source.stem}.svg"
+            png = svg.with_suffix(".png")
+            self.assertEqual(self.run_cli(str(source), "-o", str(svg))[0], 0)
+            self.assertEqual(self.run_cli(str(source), "-o", str(png))[0], 0)
+            data = png.read_bytes()
+            self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n")
+            root = ET.fromstring(svg.read_text(encoding="utf-8"))
+            self.assertEqual(int.from_bytes(data[16:20], "big"),
+                             2 * int(float(root.get("width"))))
+            self.assertEqual(int.from_bytes(data[20:24], "big"),
+                             2 * int(float(root.get("height"))))
+            self.assertEqual(self.run_cli(str(source), "-o", str(png),
+                                          "--up-to-date")[0], 0)
+
     def test_overrides_replace_descriptions(self):
         folder = Path(tempfile.mkdtemp())
         overrides = folder / "blueprint.toml"
@@ -742,8 +774,8 @@ class CommandLineTests(unittest.TestCase):
         self.assertIn("```mermaid",
                       (folder / "flow.md").read_text(encoding="utf-8"))
         self.assertEqual(self.run_cli(str(EXAMPLES), "-o",
-                                      str(folder / "x.png"))[0], 2)
-        self.assertFalse((folder / "x.png").exists())
+                                      str(folder / "x.gif"))[0], 2)
+        self.assertFalse((folder / "x.gif").exists())
         self.assertFalse((EXAMPLES / "architecture.drawio").exists())
 
 

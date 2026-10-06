@@ -24,13 +24,15 @@ from flowblueprint.mermaid import render_markdown_str, render_mermaid_str
 from flowblueprint.model import Branch, Diagram, Flow, Item, Loop, Step
 from flowblueprint.overview import layout_project
 from flowblueprint.page import render_html_str
+from flowblueprint.png import PngUnavailableError, render_png_bytes
 from flowblueprint.project import load_project
 from flowblueprint.rules import check_diagram
 from flowblueprint.source import load_script
 from flowblueprint.svg import render_svg_str
 from flowblueprint.summary import apply_groups_list, summarise_items_list
 
-OUTPUT_SUFFIXES_TUPLE = (".drawio", ".svg", ".html", ".md", ".mmd")
+OUTPUT_SUFFIXES_TUPLE = (".drawio", ".svg", ".png", ".html", ".md",
+                         ".mmd")
 # Mermaid places shapes itself, so its flows are laid out in one column.
 MERMAID_SUFFIXES_TUPLE = (".md", ".mmd")
 SINGLE_COLUMN_BLOCKS_INT = 1_000_000
@@ -52,7 +54,7 @@ def build_parser() -> argparse.ArgumentParser:
                              "project folder")
     parser.add_argument("-o", "--output", type=Path,
                         help="output file: .drawio (editable, the default),"
-                             " .svg (image), .html (web page), .md "
+                             " .svg or .png (image), .html (web page), .md "
                              "(Markdown with Mermaid) or .mmd (Mermaid)")
     parser.add_argument("--force", action="store_true",
                         help="overwrite an existing output file")
@@ -195,10 +197,10 @@ def render_output_str(output: Path, diagram: Diagram,
         notes_list: Lines about what the diagram leaves out.
 
     Returns:
-        The file text.
+        The file text (for .png, the SVG it is rasterised from).
     """
     suffix_str = output.suffix.lower()
-    if suffix_str == ".svg":
+    if suffix_str in (".svg", ".png"):
         return render_svg_str(diagram)
     if suffix_str == ".html":
         return render_html_str(diagram, notes_list)
@@ -209,13 +211,13 @@ def render_output_str(output: Path, diagram: Diagram,
     return render_drawio_str(diagram)
 
 
-def write_output_int(output: Path, text_str: str, force: bool,
+def write_output_int(output: Path, data: str | bytes, force: bool,
                      summary_str: str) -> int:
     """Write the rendered file unless that would overwrite one.
 
     Args:
         output: The output file.
-        text_str: Its text.
+        data: Its text, or bytes for an image.
         force: Whether an existing file may be replaced.
         summary_str: What was written, for the success message.
 
@@ -226,26 +228,30 @@ def write_output_int(output: Path, text_str: str, force: bool,
         print(f"flowblueprint: {output} exists; use --force to replace it",
               file=sys.stderr)
         return 2
-    output.write_text(text_str, encoding="utf-8")
+    if isinstance(data, bytes):
+        output.write_bytes(data)
+    else:
+        output.write_text(data, encoding="utf-8")
     print(f"wrote {output} ({summary_str})")
     return 0
 
 
-def compare_output_int(output: Path, text_str: str) -> int:
+def compare_output_int(output: Path, data: str | bytes) -> int:
     """Report whether a saved diagram matches a fresh drawing.
 
     Args:
         output: The saved diagram file.
-        text_str: The freshly rendered text.
+        data: The freshly rendered text, or bytes for an image.
 
     Returns:
         0 when the file is up to date, 1 when it is missing or differs.
     """
     try:
-        current_str = output.read_text(encoding="utf-8")
+        current_str = (output.read_bytes() if isinstance(data, bytes)
+                       else output.read_text(encoding="utf-8"))
     except FileNotFoundError:
         current_str = None
-    if current_str == text_str:
+    if current_str == data:
         print(f"{output} is up to date")
         return 0
     state_str = "is missing" if current_str is None else "is out of date"
@@ -265,11 +271,18 @@ def finish_output_int(arguments: argparse.Namespace, output: Path,
         summary_str: What was drawn, for the success message.
 
     Returns:
-        The exit code.
+        The exit code; 2 when PNG output lacks its optional renderer.
     """
+    data: str | bytes = text_str
+    if output.suffix.lower() == ".png":
+        try:
+            data = render_png_bytes(text_str)
+        except PngUnavailableError as error:
+            print(f"flowblueprint: {error}", file=sys.stderr)
+            return 2
     if arguments.up_to_date:
-        return compare_output_int(output, text_str)
-    return write_output_int(output, text_str, arguments.force, summary_str)
+        return compare_output_int(output, data)
+    return write_output_int(output, data, arguments.force, summary_str)
 
 
 def check_output_suffix_bool(output: Path | None) -> bool:

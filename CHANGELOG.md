@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `-o diagram.png` writes a PNG picture (twice the SVG size, white
+  background) through the optional resvg renderer:
+  `pip install "flowblueprint[png]"`. Without it, FlowBlueprint explains
+  the install command and writes nothing; every other format needs no
+  extra package.
 - `--up-to-date` draws nothing and exits 1 when the output file is
   missing or differs from a fresh drawing (line endings ignored), for CI.
   The GitHub Action gains `check: "true"` and pre-commit a

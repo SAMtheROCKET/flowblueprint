@@ -128,6 +128,7 @@ The suffix of `-o` picks the format:
 | --- | --- | --- |
 | `.drawio` (default) | An editable diagram | diagrams.net, the VS Code Draw.io extension |
 | `.svg` | An image | Slides, documents, READMEs |
+| `.png` | A picture at twice the size, on white | Chat, e-mail, Word and PowerPoint (needs `pip install "flowblueprint[png]"`) |
 | `.html` | A self-contained web page with the image and notes | E-mail, tickets, sharing without tools |
 | `.md` | Markdown with a Mermaid flowchart | GitHub and GitLab READMEs, wikis, Obsidian |
 | `.mmd` | Mermaid text | Notion, documentation sites, Mermaid tools |
