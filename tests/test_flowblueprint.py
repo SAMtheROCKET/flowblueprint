@@ -3,6 +3,7 @@
 import contextlib
 import importlib.util
 import io
+import itertools
 import json
 from pathlib import Path
 import tempfile
@@ -18,7 +19,9 @@ from flowblueprint.flow import build_flow
 from flowblueprint.layout import layout_flow
 from flowblueprint.model import (
     CONNECTOR_KIND, DATABASE_KIND, DATA_KIND, DOCUMENT_KIND, LEGEND_KIND,
-    LOOP_CLOSE_KIND, LOOP_OPEN_KIND, PLOT_KIND, SECTION_KIND, Branch, Loop)
+    LOOP_CLOSE_KIND, LOOP_OPEN_KIND, PLOT_KIND, SECTION_KIND, Branch, Edge,
+    Loop, Node)
+from flowblueprint.routing import Route, pack_slots_tuple, place_ports_none
 from flowblueprint.rules import check_diagram
 from flowblueprint.source import load_script
 from flowblueprint.summary import apply_groups_list, summarise_items_list
@@ -577,6 +580,37 @@ class ProjectTests(unittest.TestCase):
                         and first.y_px < second.y_px + second.height
                         and second.y_px < first.y_px + first.height)
 
+    def assert_clean_routes(self, diagram):
+        """No arrow crosses a block, and no two arrows share a line."""
+        nodes = {node.node_id: node for node in diagram.nodes}
+        blocks = [node for node in diagram.nodes
+                  if node.node_id.startswith("file")]
+        segments = []
+        for index, edge in enumerate(diagram.edges):
+            points = route_points_list(edge, nodes)
+            for (x1, y1), (x2, y2) in zip(points, points[1:]):
+                self.assertTrue(x1 == x2 or y1 == y2, "diagonal segment")
+                segments.append((index, x1, y1, x2, y2))
+                for block in blocks:
+                    inside_x = (min(x1, x2) < block.x_px + block.width
+                                and max(x1, x2) > block.x_px)
+                    inside_y = (min(y1, y2) < block.y_px + block.height
+                                and max(y1, y2) > block.y_px)
+                    self.assertFalse(inside_x and inside_y, block.label[0])
+        for first, second in itertools.combinations(segments, 2):
+            if first[0] == second[0]:
+                continue
+            for axis in (0, 1):  # 0: same x (vertical), 1: same y
+                fixed, low, high = 1 + axis, 2 - axis, 4 - axis
+                if (first[fixed] == first[fixed + 2]
+                        and second[fixed] == second[fixed + 2]
+                        and abs(first[fixed] - second[fixed]) < 1.0):
+                    overlap = (min(max(first[low], first[high]),
+                                   max(second[low], second[high]))
+                               - max(min(first[low], first[high]),
+                                     min(second[low], second[high])))
+                    self.assertLess(overlap, 1.0, (first, second))
+
     def test_arrows_that_skip_rows_go_around_blocks(self):
         folder = write_tree({
             "run.py": "import a\nimport c\nif __name__ == '__main__':\n"
@@ -586,20 +620,44 @@ class ProjectTests(unittest.TestCase):
             "c.py": "def h(): ...\n",
         })
         diagram = layout_project(load_project(folder))
-        nodes = {node.node_id: node for node in diagram.nodes}
-        blocks = [node for node in diagram.nodes
-                  if node.node_id.startswith("file")]
-        routed = [edge for edge in diagram.edges if edge.waypoints]
-        self.assertEqual(len(routed), 1)  # run.py -> c.py skips two rows
-        points = route_points_list(routed[0], nodes)
-        for (x1, y1), (x2, y2) in zip(points, points[1:]):
-            for block in blocks:  # no segment crosses a block's inside
-                inside_x = (min(x1, x2) < block.x_px + block.width
-                            and max(x1, x2) > block.x_px)
-                inside_y = (min(y1, y2) < block.y_px + block.height
-                            and max(y1, y2) > block.y_px)
-                self.assertFalse(inside_x and inside_y, block.label[0])
+        routed = sorted(len(edge.waypoints) for edge in diagram.edges)
+        self.assertEqual(routed, [2, 2, 2, 4])  # run.py -> c.py skips rows
+        self.assert_clean_routes(diagram)
         self.assertIn("<mxPoint", render_drawio_str(diagram))
+
+    def test_shared_points_never_mix_directions(self):
+        slots, used = pack_slots_tuple([False] * 6 + [True] * 6, 4)
+        self.assertEqual(used, 4)
+        self.assertEqual(slots, [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3])
+        self.assertIsNone(pack_slots_tuple([False, True] * 4, 4))
+        block = Node("b", "process", ["b"], 0.0, 0.0, 12.0, 40.0)
+        routes = [Route(Edge("a", "b"), block, block, 0, 1, upward=up)
+                  for up in [False, True] * 4]
+        place_ports_none(block, routes, "entry_x")
+        by_x = {}
+        for route in routes:
+            by_x.setdefault(route.entry_x, set()).add(route.upward)
+        self.assertTrue(all(len(kinds) == 1 for kinds in by_x.values()))
+
+    def test_dense_projects_keep_arrows_apart(self):
+        files = {"main.py": "".join(f"import m{index}\n"
+                                    for index in range(0, 30, 3))}
+        for index in range(30):
+            imports = [f"m{other}" for other in (index + 1, index + 4,
+                                                  index + 9) if other < 30]
+            files[f"m{index}.py"] = "".join(f"import {name}\n"
+                                            for name in imports)
+        files["m29.py"] = "import m0\nimport m20\n"  # import cycles
+        diagram = layout_project(load_project(write_tree(files)))
+        self.assertGreater(len(diagram.edges), 60)
+        nodes = {node.node_id: node for node in diagram.nodes}
+        upward = [edge for edge in diagram.edges
+                  if nodes[edge.target_id].y_px < nodes[edge.source_id].y_px]
+        self.assertTrue(upward)
+        self.assertTrue(all(edge.waypoints for edge in upward))
+        self.assert_clean_routes(diagram)
+        drawio = render_drawio_str(diagram)
+        self.assertNotIn("exitX=0.5;exitY=1;entryX=0.5;entryY=0;", drawio)
 
     def test_unreadable_files_are_noted(self):
         folder = write_tree({"good.py": "x = 1\n", "bad.py": "def (:\n"})

@@ -205,10 +205,14 @@ Absolute, relative and sibling-script imports are resolved, including
 `src` layouts and folders inside packages. Virtual environments,
 caches, build output and hidden folders are skipped; test files are
 skipped unless you pass `--include-tests`. Files that cannot be parsed
-are listed as notes instead of stopping the run. In the draw.io and SVG
-output, an arrow that skips rows runs in its own lane beside the blocks,
-so it never passes behind one; the Mermaid output is laid out by Mermaid
-itself.
+are listed as notes instead of stopping the run. In the draw.io, SVG,
+PNG and HTML output every arrow has its own start and end point on its
+blocks and its own line between rows, so arrows between different blocks
+never overlap or pass behind a block; an arrow that skips rows drops
+through the nearest free gap between blocks. Only a very busy block (more
+arrows than fit side by side on its edge) gathers neighbouring arrows of
+one direction into a shared line, like a bus. The Mermaid output is laid
+out by Mermaid itself.
 
 ## What you get
 

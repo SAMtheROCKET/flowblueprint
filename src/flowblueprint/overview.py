@@ -17,6 +17,7 @@ from flowblueprint.model import (
 from flowblueprint.project import (
     ENTRY_KIND, MODULE_KIND, NOTEBOOK_KIND, PACKAGE_KIND, FileInfo, Project,
     name_some_str)
+from flowblueprint.routing import route_overview_none
 
 KIND_FILLS_DICT = {ENTRY_KIND: "#d5e8d4", NOTEBOOK_KIND: "#fff2cc",
                    MODULE_KIND: "#dae8fc", PACKAGE_KIND: "#e1d5e7"}
@@ -24,7 +25,6 @@ KIND_LEGENDS_DICT = {ENTRY_KIND: "entry point (runs)",
                      NOTEBOOK_KIND: "notebook", MODULE_KIND: "module",
                      PACKAGE_KIND: "package or folder"}
 ROW_GAP_FLOAT = 70.0
-LANE_GAP_FLOAT = 8.0
 BLOCK_GAP_FLOAT = 40.0
 KINDS_ORDER_TUPLE = (ENTRY_KIND, NOTEBOOK_KIND, PACKAGE_KIND, MODULE_KIND)
 
@@ -271,11 +271,11 @@ def layout_project(project: Project) -> Diagram:
     left_float = MARGIN_FLOAT + LEGEND_WIDTH_FLOAT
     full_width_float = (widest_int * BLOCK_WIDTH_FLOAT
                         + (widest_int - 1) * BLOCK_GAP_FLOAT)
-    diagram.nodes.append(Node("title", TEXT_KIND, [diagram.title],
-                              left_float, MARGIN_FLOAT,
-                              max(full_width_float, BLOCK_WIDTH_FLOAT),
-                              24.0))
+    diagram.nodes.append(Node(
+        "title", TEXT_KIND, [diagram.title], left_float, MARGIN_FLOAT,
+        max(full_width_float, BLOCK_WIDTH_FLOAT), 24.0))
     y_float = MARGIN_FLOAT + HEADER_HEIGHT_FLOAT
+    rows_nodes_list = []
     for row_list in rows_list:
         row_width_float = (len(row_list) * BLOCK_WIDTH_FLOAT
                            + (len(row_list) - 1) * BLOCK_GAP_FLOAT)
@@ -283,39 +283,10 @@ def layout_project(project: Project) -> Diagram:
             project, row_list, skip_int,
             left_float + (full_width_float - row_width_float) / 2, y_float)
         diagram.nodes.extend(nodes_list)
+        rows_nodes_list.append(nodes_list)
         y_float += max(node.height for node in nodes_list) + ROW_GAP_FLOAT
     diagram.edges.extend(Edge(f"file{source_int}", f"file{target_int}",
                               enters_top=True)
                          for source_int, target_int in project.edges)
-    route_skip_edges_none(diagram, left_float + full_width_float + 20.0)
+    route_overview_none(diagram, rows_nodes_list, left_float, ROW_GAP_FLOAT)
     return diagram
-
-
-def route_skip_edges_none(diagram: Diagram, lane_left_float: float) -> None:
-    """Route arrows that skip rows through lanes right of all blocks.
-
-    Args:
-        diagram: The laid-out overview (edges changed in place).
-        lane_left_float: The x of the first lane, right of every block.
-
-    Returns:
-        None. An arrow to a row further down than the next one leaves
-        its block downwards, runs right in the row gap to its own
-        lane, down the lane, and back left in the gap above its target,
-        so it never passes behind another block.
-    """
-    nodes_dict = {node.node_id: node for node in diagram.nodes}
-    lane_int = 0
-    for edge in diagram.edges:
-        source = nodes_dict[edge.source_id]
-        target = nodes_dict[edge.target_id]
-        source_bottom_float = source.y_px + source.height
-        if target.y_px - source_bottom_float < 2 * ROW_GAP_FLOAT:
-            continue
-        lane_x = lane_left_float + lane_int * LANE_GAP_FLOAT
-        leave_y = source_bottom_float + 12.0 + (lane_int % 6) * 4.0
-        enter_y = target.y_px - 16.0 - (lane_int % 6) * 4.0
-        edge.waypoints = [
-            (source.x_px + source.width / 2, leave_y), (lane_x, leave_y),
-            (lane_x, enter_y), (target.x_px + target.width / 2, enter_y)]
-        lane_int += 1

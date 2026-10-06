@@ -100,8 +100,9 @@ def build_edge_style_str(edge: Edge, nodes_dict: dict[str, Node]) -> str:
     style_str = EDGE_STYLE_STR
     if edge.is_side:
         return style_str + "exitX=1;exitY=0.5;entryX=0;entryY=0.5;"
-    if edge.enters_top and target.y_px > source.y_px + source.height:
-        return style_str + "exitX=0.5;exitY=1;entryX=0.5;entryY=0;"
+    if edge.enters_top and (target.y_px > source.y_px + source.height
+                            or edge.waypoints):
+        return style_str + build_port_style_str(edge, source, target)
     if source.kind == DECISION_KIND and edge.label == "Yes":
         style_str += "exitX=1;exitY=0.5;"
     elif source.kind == DECISION_KIND and edge.label == "No":
@@ -176,6 +177,29 @@ def render_drawio_str(diagram: Diagram) -> str:
                               y=format_number_str(y_float))
     ET.indent(mxfile)
     return ET.tostring(mxfile, encoding="unicode") + "\n"
+
+
+def build_port_style_str(edge: Edge, source: Node, target: Node) -> str:
+    """Exit and entry points of an arrow from a block down into another.
+
+    Args:
+        edge: The arrow; its first and last waypoints sit straight
+            beside the exit and the entry (below and above, or the other
+            way round for an arrow that points up).
+        source: The block it leaves.
+        target: The block it enters.
+
+    Returns:
+        The draw.io exit/entry style, centred when there are no
+        waypoints.
+    """
+    if not edge.waypoints:
+        return "exitX=0.5;exitY=1;entryX=0.5;entryY=0;"
+    exit_float = (edge.waypoints[0][0] - source.x_px) / source.width
+    entry_float = (edge.waypoints[-1][0] - target.x_px) / target.width
+    upward_bool = target.y_px + target.height <= source.y_px
+    return (f"exitX={exit_float:.4f};exitY={0 if upward_bool else 1};"
+            f"entryX={entry_float:.4f};entryY={1 if upward_bool else 0};")
 
 
 def format_number_str(value_float: float) -> str:

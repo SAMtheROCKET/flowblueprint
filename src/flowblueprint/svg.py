@@ -197,13 +197,19 @@ def route_down_list(source: Node, target: Node,
 
     Returns:
         Down from the source, through the waypoints or across just
-        above the target, then down into it.
+        above the target, then down into it. With waypoints, the arrow
+        leaves and enters at the first and last waypoint's x; when the
+        target is above, it leaves the source's top and enters the
+        target's bottom.
     """
     source_mid_x = source.x_px + source.width / 2
     target_mid_x = target.x_px + target.width / 2
+    if waypoints_list and target.y_px + target.height <= source.y_px:
+        return [(waypoints_list[0][0], source.y_px), *waypoints_list,
+                (waypoints_list[-1][0], target.y_px + target.height)]
     if waypoints_list:
-        return [(source_mid_x, source.y_px + source.height), *waypoints_list,
-                (target_mid_x, target.y_px)]
+        return [(waypoints_list[0][0], source.y_px + source.height),
+                *waypoints_list, (waypoints_list[-1][0], target.y_px)]
     turn_y = target.y_px - 16.0
     return [(source_mid_x, source.y_px + source.height),
             (source_mid_x, turn_y), (target_mid_x, turn_y),
@@ -279,8 +285,9 @@ def render_svg_str(diagram: Diagram) -> str:
     width_float = max([node.x_px + node.width for node in diagram.nodes]
                       + [point_tuple[0] for edge in diagram.edges
                          for point_tuple in edge.waypoints]) + 40
-    height_float = max(node.y_px + node.height
-                       for node in diagram.nodes) + 40
+    height_float = max([node.y_px + node.height for node in diagram.nodes]
+                       + [point_tuple[1] for edge in diagram.edges
+                          for point_tuple in edge.waypoints]) + 40
     parts_list = [
         '<svg xmlns="http://www.w3.org/2000/svg" '
         f'width="{width_float:.0f}" height="{height_float:.0f}" '
