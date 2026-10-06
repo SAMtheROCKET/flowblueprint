@@ -1,5 +1,9 @@
 # FlowBlueprint
 
+[![CI](https://github.com/SAMtheROCKET/flowblueprint/actions/workflows/ci.yml/badge.svg)](https://github.com/SAMtheROCKET/flowblueprint/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Website](https://img.shields.io/badge/website-flowblueprint-informational)](https://samtherocket.github.io/flowblueprint/)
+
 **The Python architect: turn any Python script, Jupyter notebook or whole
 project folder into a clear architecture diagram (draw.io, SVG, HTML or
 Mermaid for your README), without running it.**
