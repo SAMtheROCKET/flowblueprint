@@ -16,6 +16,10 @@ from refactrail.notebooks import read_cell_source_str, read_notebook_dict
 
 # IPython magics and shell escapes: not Python, so not drawn.
 MAGIC_LINE_PATTERN = re.compile(r"^(\s*)([%!].*)$", re.MULTILINE)
+# "# %% Title" cell markers (VS Code, Jupytext, Spyder) and the markers
+# FlowBlueprint writes for notebook Markdown headings.
+SECTION_PATTERN = re.compile(r"^#\s*%%(?:\s*\[markdown\])?\s+(\S.*?)\s*$")
+HEADING_PATTERN = re.compile(r"^\s{0,3}#{1,6}\s+(\S.*?)\s*#*\s*$")
 
 @dataclass
 class FunctionInfo:
@@ -79,6 +83,7 @@ class ScriptInfo:
             a developed module.
         classes: Classes of the script and of developed modules, by the
             name the script uses for them ("Model" or "models.Model").
+        sections: (line, title) of each section heading, in order.
     """
 
     path: Path
@@ -88,6 +93,7 @@ class ScriptInfo:
     developed: dict[str, FunctionInfo] = field(default_factory=dict)
     developed_modules: dict[str, str] = field(default_factory=dict)
     classes: dict[str, ClassInfo] = field(default_factory=dict)
+    sections: list[tuple[int, str]] = field(default_factory=list)
 
 
 def read_source_str(path: Path) -> str:
@@ -120,20 +126,56 @@ def join_notebook_cells_str(text_str: str) -> str:
         text_str: The notebook JSON.
 
     Returns:
-        The code cells in order, separated by blank lines.
+        The code cells in order, separated by blank lines; the last
+        Markdown heading before a code cell becomes a "# %% Title"
+        section marker above it.
 
     Warnings:
         Raises ValueError for notebooks RefacTrail refuses.
     """
-    notebook_dict = read_notebook_dict(text_str.removeprefix("﻿"))
+    notebook_dict = read_notebook_dict(text_str.removeprefix("\ufeff"))
     cells_list = []
+    heading_str = ""
     for index_int, cell_dict in enumerate(notebook_dict["cells"]):
-        if cell_dict["cell_type"] == "code":
-            cell_str = read_cell_source_str(cell_dict, index_int)
+        cell_str = read_cell_source_str(cell_dict, index_int)
+        if cell_dict["cell_type"] == "markdown":
+            heading_str = find_heading_str(cell_str) or heading_str
+        elif cell_dict["cell_type"] == "code":
             if cell_str.lstrip().startswith("%%"):
                 continue  # a cell magic: the whole cell is not Python
-            cells_list.append(MAGIC_LINE_PATTERN.sub(r"\1# \2", cell_str))
+            marker_str = f"# %% {heading_str}\n" if heading_str else ""
+            cells_list.append(marker_str + MAGIC_LINE_PATTERN.sub(
+                r"\1# \2", cell_str))
+            heading_str = ""
     return "\n\n".join(cells_list) + "\n"
+
+
+def find_heading_str(markdown_str: str) -> str:
+    """The last heading of a Markdown cell.
+
+    Args:
+        markdown_str: The cell text.
+
+    Returns:
+        The heading text without its # marks, or "".
+    """
+    headings_list = [match.group(1) for match in map(
+        HEADING_PATTERN.match, markdown_str.splitlines()) if match]
+    return headings_list[-1] if headings_list else ""
+
+
+def collect_sections_list(text_str: str) -> list[tuple[int, str]]:
+    """The section markers of a script.
+
+    Args:
+        text_str: The script text (notebooks already joined).
+
+    Returns:
+        (line, title) for every "# %% Title" line, in order.
+    """
+    return [(index_int, match.group(1)) for index_int, line_str in
+            enumerate(text_str.splitlines(), start=1)
+            if (match := SECTION_PATTERN.match(line_str))]
 
 
 def parse_file(path: Path) -> ast.Module:
@@ -343,9 +385,11 @@ def load_script(path: Path) -> ScriptInfo:
         Its ScriptInfo. Developed modules that fail to parse are
         treated like installed modules (no summaries or annotations).
     """
-    tree = parse_file(path)
+    text_str = read_source_str(path)
+    tree = ast.parse(text_str, filename=str(path))
     info = ScriptInfo(path, tree, collect_functions(tree, ""),
                       collect_imports(tree))
+    info.sections = collect_sections_list(text_str)
     info.classes.update(collect_classes(tree, ""))
     parsed_dict: dict[str, tuple[dict, dict]] = {}
     for local_str, (module_str, original_str) in info.imported.items():

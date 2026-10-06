@@ -16,7 +16,8 @@ import re
 from flowblueprint import describe, dtypes
 from flowblueprint.model import (
     DATA_KIND, DATABASE_KIND, DOCUMENT_KIND, PLOT_KIND, PROCESS_KIND,
-    STORAGE_KIND, Branch, Flow, Item, Loop, Note, Port, Source, Step)
+    SECTION_KIND, STORAGE_KIND, Branch, Flow, Item, Loop, Note, Port, Source,
+    Step)
 from flowblueprint.source import FunctionInfo, ScriptInfo
 
 MAX_TEXT_LENGTH_INT = 60
@@ -487,7 +488,13 @@ class FlowBuilder:
         items_list: list[Item] = []
         plain_list: list[ast.stmt] = []
         plot_list: list[ast.stmt] = []
+        previous_end_int = 0
         for statement in statements_list:
+            if self.check_section_between_bool(previous_end_int,
+                                               statement.lineno):
+                self.flush_plain_none(plain_list, items_list)
+                self.flush_plot_none(plot_list, items_list)
+            previous_end_int = statement.end_lineno or statement.lineno
             kind_str = self.classify_statement_str(statement)
             if kind_str == "plain":
                 self.flush_plot_none(plot_list, items_list)
@@ -504,6 +511,22 @@ class FlowBuilder:
         self.flush_plain_none(plain_list, items_list)
         self.flush_plot_none(plot_list, items_list)
         return items_list
+
+    def check_section_between_bool(self, after_int: int,
+                                   before_int: int) -> bool:
+        """Whether a section heading lies between two source lines.
+
+        Args:
+            after_int: The end line of the previous statement (0: none).
+            before_int: The first line of the next statement.
+
+        Returns:
+            True when a heading starts a new section in between, so the
+            statements are not grouped into one block.
+        """
+        return after_int > 0 and any(
+            after_int < line_int < before_int
+            for line_int, _ in self.info.sections)
 
     def classify_statement_str(self, statement: ast.stmt) -> str:
         """Classify a statement for grouping.
@@ -982,6 +1005,36 @@ def list_pipe_chain_list(value: ast.Call) -> list[ast.Call]:
     return list(reversed(chain_list))
 
 
+def insert_sections_list(items_list: list[Item],
+                         sections_list: list[tuple[int, str]]
+                         ) -> list[Item]:
+    """Put a section block before the first item of each section.
+
+    Args:
+        items_list: The top-level items.
+        sections_list: (line, title) of the section headings.
+
+    Returns:
+        The items with SECTION_KIND steps added. A heading followed by
+        no item is left out; of several headings before the same item,
+        the last is kept.
+    """
+    sections_dict: dict[int, tuple[int, str]] = {}
+    for line_int, title_str in sections_list:
+        index_int = next((position_int for position_int, item
+                          in enumerate(items_list) if item.line > line_int),
+                         None)
+        if index_int is not None:
+            sections_dict[index_int] = (line_int, title_str)
+    result_list: list[Item] = []
+    for position_int, item in enumerate(items_list):
+        if position_int in sections_dict:
+            line_int, title_str = sections_dict[position_int]
+            result_list.append(Step(SECTION_KIND, title_str, line=line_int))
+        result_list.append(item)
+    return result_list
+
+
 def build_flow(info: ScriptInfo) -> Flow:
     """Build the flow of a parsed script.
 
@@ -992,7 +1045,7 @@ def build_flow(info: ScriptInfo) -> Flow:
         The Flow from the entry point, with notes for what is left out.
     """
     builder = FlowBuilder(info)
-    items_list = builder.build_entry_items(
-        find_entry_statements_list(info.tree))
+    items_list = insert_sections_list(builder.build_entry_items(
+        find_entry_statements_list(info.tree)), info.sections)
     return Flow(info.path.name, items_list, builder.modules_list,
                 builder.notes_list)

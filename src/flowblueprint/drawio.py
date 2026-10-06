@@ -11,7 +11,8 @@ import xml.etree.ElementTree as ET
 from flowblueprint.model import (
     CONNECTOR_KIND, DATA_KIND, DATABASE_KIND, DECISION_KIND, DOCUMENT_KIND,
     LEGEND_KIND, LOOP_CLOSE_KIND, LOOP_OPEN_KIND, PLOT_KIND, PROCESS_KIND,
-    STORAGE_KIND, TERMINATOR_KIND, TEXT_KIND, Diagram, Edge, Node)
+    SECTION_KIND, STORAGE_KIND, TERMINATOR_KIND, TEXT_KIND, Diagram, Edge,
+    Node)
 
 COMMON_STYLE_STR = "whiteSpace=wrap;html=1;fontSize=11;strokeColor=#000000;"
 SHAPE_STYLES_DICT = {
@@ -30,6 +31,7 @@ SHAPE_STYLES_DICT = {
     CONNECTOR_KIND: "ellipse;aspect=fixed;",
     TEXT_KIND: "text;align=center;verticalAlign=middle;",
     LEGEND_KIND: "rounded=0;",
+    SECTION_KIND: "rounded=1;arcSize=40;dashed=1;fontSize=12;",
 }
 EDGE_STYLE_STR = ("edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;"
                   "endArrow=block;endFill=1;fontSize=11;")

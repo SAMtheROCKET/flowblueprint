@@ -137,6 +137,7 @@ Mermaid output is laid out by Mermaid itself.
 | Several small operations | One plain block, or one packed block at `--level summary` |
 | Functions from your own modules | Coloured blocks, with a colour legend per module |
 | `for` / `while` loops | Opening and closing loop-limit shapes |
+| Notebook Markdown headings, `# %% Title` cell markers | Dashed section banners that split the flow |
 | `if` / `elif` / `else` | A decision diamond with Yes and No paths |
 | `continue`, `break`, `return` in a branch | An arrow to the loop end, past the loop, or to END |
 | CSV, Parquet, Excel, JSON, config files | Data shapes on the left (read) or right (written) |
@@ -234,9 +235,8 @@ FlowBlueprint does.
 
 ## Roadmap
 
-- 0.3: richer notebook views (Markdown headings as sections), cleaner
-  arrow routing in large project overviews, and more library knowledge
-  for data types.
+- 0.3: cleaner arrow routing in large project overviews and more
+  library knowledge for data types.
 - Later, optional: AI-written descriptions, always shown with their source
   evidence and never required.
 

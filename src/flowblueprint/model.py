@@ -16,6 +16,8 @@ DATA_KIND = "data"
 DATABASE_KIND = "database"
 STORAGE_KIND = "storage"
 DOCUMENT_KIND = "document"
+# A section heading (notebook Markdown heading or "# %% Title" marker).
+SECTION_KIND = "section"
 SOURCE_KINDS_TUPLE = (DATA_KIND, DATABASE_KIND, STORAGE_KIND, DOCUMENT_KIND)
 
 # Diagram node kinds that are not Step kinds.
@@ -62,7 +64,7 @@ class Step:
     """One block: a call, a group of plain statements or a plot.
 
     Args:
-        kind: PROCESS_KIND or PLOT_KIND.
+        kind: PROCESS_KIND, PLOT_KIND or SECTION_KIND.
         title: The function name in bold, or "" for plain steps.
         description: A short sentence about what the step does.
         inputs: The values the step reads.

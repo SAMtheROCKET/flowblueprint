@@ -11,8 +11,8 @@ import json
 
 from flowblueprint.model import (
     CONNECTOR_KIND, DATA_KIND, DATABASE_KIND, DECISION_KIND, DOCUMENT_KIND,
-    LEGEND_KIND, LOOP_CLOSE_KIND, LOOP_OPEN_KIND, PLOT_KIND, STORAGE_KIND,
-    TERMINATOR_KIND, TEXT_KIND, Diagram, Node)
+    LEGEND_KIND, LOOP_CLOSE_KIND, LOOP_OPEN_KIND, PLOT_KIND, SECTION_KIND,
+    STORAGE_KIND, TERMINATOR_KIND, TEXT_KIND, Diagram, Node)
 
 # Opening and closing brackets of each shape, from Mermaid's classic
 # flowchart shapes (supported by every current renderer).
@@ -27,7 +27,10 @@ SHAPE_BRACKETS_DICT = {
     LOOP_OPEN_KIND: ("{{", "}}"),
     LOOP_CLOSE_KIND: ("{{", "}}"),
     CONNECTOR_KIND: ("((", "))"),
+    SECTION_KIND: ("(", ")"),
 }
+SECTION_STYLE_STR = ("    classDef section fill:#eef1f5,stroke:#5a6270,"
+                     "stroke-dasharray:5 3,color:#000000")
 ESCAPES_TUPLE = (("&", "#amp;"), ('"', "#quot;"), ("<", "#lt;"),
                  (">", "#gt;"), ("|", "#124;"), ("`", "#96;"))
 
@@ -103,7 +106,8 @@ def render_mermaid_str(diagram: Diagram) -> str:
         opening_str, closing_str = SHAPE_BRACKETS_DICT.get(
             node.kind, ("[", "]"))
         class_str = (f":::{classes_dict[node.fill]}"
-                     if node.fill in classes_dict else "")
+                     if node.fill in classes_dict else
+                     ":::section" if node.kind == SECTION_KIND else "")
         lines_list.append(f"    {ids_dict[node.node_id]}{opening_str}"
                           f"{format_label_str(node)}{closing_str}"
                           f"{class_str}")
@@ -116,6 +120,8 @@ def render_mermaid_str(diagram: Diagram) -> str:
         lines_list.append(f"    {ids_dict[edge.source_id]} {arrow_str}"
                           f"{label_str} {ids_dict[edge.target_id]}")
     lines_list.extend(list_legend_lines_list(legend_dict, classes_dict))
+    if any(node.kind == SECTION_KIND for node in diagram.nodes):
+        lines_list.append(SECTION_STYLE_STR)
     return "\n".join(lines_list) + "\n"
 
 

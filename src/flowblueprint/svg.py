@@ -9,7 +9,7 @@ import html
 
 from flowblueprint.model import (
     CONNECTOR_KIND, DATA_KIND, DATABASE_KIND, DECISION_KIND, DOCUMENT_KIND,
-    LOOP_CLOSE_KIND, LOOP_OPEN_KIND, PLOT_KIND, STORAGE_KIND,
+    LOOP_CLOSE_KIND, LOOP_OPEN_KIND, PLOT_KIND, SECTION_KIND, STORAGE_KIND,
     TERMINATOR_KIND, TEXT_KIND, Diagram, Edge, Node)
 
 LINE_HEIGHT_FLOAT = 15.0
@@ -43,9 +43,8 @@ def draw_shape_str(node: Node) -> str:
     fill_str = f'fill="{node.fill or "#ffffff"}" {STROKE_STR}'
     if node.kind == TEXT_KIND:
         return ""
-    if node.kind == TERMINATOR_KIND:
-        return (f'<rect x="{left}" y="{top}" width="{node.width}" '
-                f'height="{node.height}" rx="{node.height / 2}" {fill_str}/>')
+    if node.kind in (TERMINATOR_KIND, SECTION_KIND):
+        return draw_rounded_str(node, fill_str)
     if node.kind == CONNECTOR_KIND:
         return (f'<circle cx="{left + node.width / 2}" '
                 f'cy="{top + node.height / 2}" r="{node.width / 2}" '
@@ -69,6 +68,23 @@ def draw_shape_str(node: Node) -> str:
                      'fill="none"/>')
     return (f'<rect x="{left}" y="{top}" width="{node.width}" '
             f'height="{node.height}" {fill_str}/>' + extra_str)
+
+
+def draw_rounded_str(node: Node, fill_str: str) -> str:
+    """A terminator, or a dashed section banner, with round ends.
+
+    Args:
+        node: The node.
+        fill_str: Fill and stroke attributes.
+
+    Returns:
+        SVG markup.
+    """
+    dash_str = (' stroke-dasharray="5 3"' if node.kind == SECTION_KIND
+                else "")
+    return (f'<rect x="{node.x_px}" y="{node.y_px}" width="{node.width}" '
+            f'height="{node.height}" rx="{node.height / 2}" '
+            f'{fill_str}{dash_str}/>')
 
 
 def list_polygon_points_list(node: Node) -> list[tuple[float, float]]:

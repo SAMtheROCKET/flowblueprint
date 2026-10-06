@@ -15,7 +15,7 @@ from flowblueprint.flow import build_flow
 from flowblueprint.layout import layout_flow
 from flowblueprint.model import (
     CONNECTOR_KIND, DATABASE_KIND, DATA_KIND, DOCUMENT_KIND, LEGEND_KIND,
-    LOOP_CLOSE_KIND, LOOP_OPEN_KIND, PLOT_KIND, Branch, Loop)
+    LOOP_CLOSE_KIND, LOOP_OPEN_KIND, PLOT_KIND, SECTION_KIND, Branch, Loop)
 from flowblueprint.rules import check_diagram
 from flowblueprint.source import load_script
 from flowblueprint.summary import apply_groups_list, summarise_items_list
@@ -338,7 +338,28 @@ class ControlFlowTests(unittest.TestCase):
         path.write_text(json.dumps(notebook), encoding="utf-8")
         flow = build_flow(load_script(path))
         self.assertEqual(flow.script_name, "analysis.ipynb")
-        self.assertEqual(flow.items[0].sources[0].label, "a.csv")
+        self.assertEqual((flow.items[0].kind, flow.items[0].title),
+                         (SECTION_KIND, "Title"))
+        self.assertEqual(flow.items[1].sources[0].label, "a.csv")
+
+    def test_sections_from_headings_and_cell_markers(self):
+        flow = flow_of("""\
+            # %% Setup
+            x = 1
+            # %%
+            y = 2
+            # %% Report
+            print(x + y)
+        """)
+        self.assertEqual([item.title for item in flow.items
+                          if item.kind == SECTION_KIND], ["Setup", "Report"])
+        self.assertEqual(len(flow.items), 4)  # plain runs split at Report
+        diagram = layout_flow(flow)
+        self.assertEqual([finding for finding in check_diagram(diagram)
+                          if finding.severity == "error"], [])
+        self.assertIn('("<b>Setup</b>"):::section',
+                      render_mermaid_str(layout_flow(flow, 1_000_000)))
+        self.assertIn('stroke-dasharray="5 3"', render_svg_str(diagram))
 
 
 class LayoutTests(unittest.TestCase):

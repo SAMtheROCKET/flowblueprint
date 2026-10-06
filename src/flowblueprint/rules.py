@@ -19,7 +19,8 @@ from dataclasses import dataclass
 from flowblueprint.describe import check_verb_first_bool
 from flowblueprint.model import (
     CONNECTOR_KIND, DECISION_KIND, LEGEND_KIND, LOOP_CLOSE_KIND,
-    LOOP_OPEN_KIND, PLOT_KIND, PROCESS_KIND, SOURCE_KINDS_TUPLE,
+    LOOP_OPEN_KIND, PLOT_KIND, PROCESS_KIND, SECTION_KIND,
+    SOURCE_KINDS_TUPLE,
     TERMINATOR_KIND, TEXT_KIND, UNKNOWN_DTYPE_STR, Diagram)
 
 BLOCK_KINDS_TUPLE = (PROCESS_KIND, PLOT_KIND, DECISION_KIND,
@@ -196,8 +197,8 @@ def check_wording(diagram: Diagram) -> list[Finding]:
     """
     findings_list = []
     for node in diagram.nodes:
-        if node.has_title and node.label and not check_verb_first_bool(
-                node.label[0]):
+        if node.kind != SECTION_KIND and node.has_title and node.label and (
+                not check_verb_first_bool(node.label[0])):
             findings_list.append(Finding(
                 "FB008", "info",
                 f"title '{node.label[0]}' does not start with a verb",

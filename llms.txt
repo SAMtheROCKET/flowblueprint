@@ -10,6 +10,7 @@ Key facts:
 
 - Static analysis only: the code is parsed with Python's `ast` module, never imported or executed; source files are never changed.
 - Output by suffix of `-o`: `.drawio` (editable in diagrams.net and the VS Code Draw.io extension), `.svg`, `.html` (self-contained page), `.md` (Markdown with a Mermaid flowchart for GitHub/GitLab READMEs) or `.mmd` (Mermaid text).
+- Notebook Markdown headings and "# %% Title" cell markers become section banners in the flow.
 - Project mode: `flowblueprint folder/` draws one block per script, module, package and notebook with arrows for imports between them, each block summarising the file and the data it reads and writes.
 - Levels: `--level detailed` (one block per call) and `--level summary` (several operations packed into one higher-level block); an override TOML file can rename blocks and name groups of functions.
 - Understands functions, classes and methods, local helper modules (colour-coded with a legend), loops, decisions, continue/break/return, pandas/numpy I/O, SQL, cloud storage and matplotlib/seaborn/plotly plots.
