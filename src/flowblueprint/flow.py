@@ -10,7 +10,7 @@ blocks. Statements that are not drawn are reported as notes.
 """
 
 import ast
-from pathlib import PurePath
+from pathlib import Path, PurePath
 import re
 
 from flowblueprint import describe, dtypes
@@ -18,9 +18,11 @@ from flowblueprint.model import (
     DATA_KIND, DATABASE_KIND, DOCUMENT_KIND, PLOT_KIND, PROCESS_KIND,
     SECTION_KIND, STORAGE_KIND, Branch, Flow, Item, Loop, Note, Port, Source,
     Step)
-from flowblueprint.source import FunctionInfo, ScriptInfo
+from flowblueprint.source import FunctionInfo, ScriptInfo, load_script
 
 MAX_TEXT_LENGTH_INT = 60
+# Function pages drawn per script at most, in the order of first call.
+MAX_FUNCTION_PAGES_INT = 40
 
 READ_NAMES_FROZENSET = frozenset((
     "read_csv", "read_parquet", "read_excel", "read_json", "read_feather",
@@ -181,9 +183,11 @@ class FlowBuilder:
         self.used_handles_set: set[str] = set()
         self.modules_list: list[str] = []
         self.notes_list: list[Note] = []
+        self.called_list: list[FunctionInfo] = []
         for node in info.tree.body:
             if isinstance(node, (ast.Assign, ast.AnnAssign)):
                 self.record_assignment_none(node)
+        self.module_env_dict = dict(self.env_dict)
 
     # ----- variables and their types -----
 
@@ -315,10 +319,17 @@ class FlowBuilder:
             statements_list: The entry statements.
 
         Returns:
-            (statement index, function) when exactly one call in the
-            entry runs a script function or method (constructors aside)
-            with at least three statements of its own; else None.
+            (statement index, function) when the entry only hands over:
+            at most two statements, and exactly one call runs a script
+            function or method (constructors aside) with at least three
+            statements of its own; else None (the function then gets a
+            page of its own).
         """
+        if len(statements_list) > 2 or not all(
+                isinstance(statement, (ast.Assign, ast.AnnAssign, ast.Expr,
+                                       ast.Raise, ast.Return))
+                for statement in statements_list):
+            return None
         found_list = []
         for index_int, statement in enumerate(statements_list):
             for call in (node for node in ast.walk(statement)
@@ -666,16 +677,8 @@ class FlowBuilder:
         Returns:
             The statement's items (possibly none, with a note).
         """
-        if isinstance(statement, (ast.For, ast.AsyncFor)):
-            self.note_else_none(statement, "for")
-            header_str = (f"for {ast.unparse(statement.target)} in "
-                          f"{ast.unparse(statement.iter)}")
-            return [Loop(shorten_str(header_str),
-                         self.build_items(statement.body), statement.lineno)]
-        if isinstance(statement, ast.While):
-            self.note_else_none(statement, "while")
-            return [Loop(shorten_str(f"while {ast.unparse(statement.test)}"),
-                         self.build_items(statement.body), statement.lineno)]
+        if isinstance(statement, (ast.For, ast.AsyncFor, ast.While)):
+            return [self.build_loop(statement)]
         if isinstance(statement, ast.If):
             yes_list, yes_jump_str = split_jump_tuple(statement.body)
             no_list, no_jump_str = split_jump_tuple(statement.orelse)
@@ -694,6 +697,29 @@ class FlowBuilder:
             f"{type(statement).__name__} statement is not drawn "
             "(not supported in this version)")))
         return []
+
+    def build_loop(self, statement: ast.For | ast.AsyncFor | ast.While
+                   ) -> Loop:
+        """A loop with readable opening and closing texts.
+
+        Args:
+            statement: The for or while loop.
+
+        Returns:
+            The Loop: "For each x in xs" ... "Next x", or "While c" ...
+            "Check the condition again".
+        """
+        if isinstance(statement, ast.While):
+            self.note_else_none(statement, "while")
+            return Loop(shorten_str(f"While {ast.unparse(statement.test)}"),
+                        self.build_items(statement.body), statement.lineno,
+                        "Check the condition again")
+        self.note_else_none(statement, "for")
+        target_str = ast.unparse(statement.target)
+        header_str = (f"For each {target_str} in "
+                      f"{ast.unparse(statement.iter)}")
+        return Loop(shorten_str(header_str), self.build_items(statement.body),
+                    statement.lineno, shorten_str(f"Next {target_str}"))
 
     def note_else_none(self, statement: ast.For | ast.AsyncFor | ast.While,
                        keyword_str: str) -> None:
@@ -746,21 +772,26 @@ class FlowBuilder:
         return items_list
 
     def build_try(self, statement: ast.Try | ast.TryStar) -> list[Item]:
-        """Build a try statement: its body, else and finally parts.
+        """Build a try statement: its body, handlers, else and finally.
 
         Args:
             statement: The try statement.
 
         Returns:
-            The items of the main path; handlers are reported as notes.
+            The body's items, then one "<error> raised?" decision per
+            handler (Yes runs the handler, No goes on to the next
+            check), then the else and finally parts.
         """
-        for handler in statement.handlers:
+        handlers_item: list[Item] = []
+        for handler in reversed(statement.handlers):
             caught_str = (ast.unparse(handler.type) if handler.type
-                          else "any exception")
-            self.notes_list.append(Note(handler.lineno, (
-                f"the handler for {caught_str} of the try at line "
-                f"{statement.lineno} is not drawn")))
-        return (self.build_items(statement.body)
+                          else "an error")
+            body_list, jump_str = split_jump_tuple(handler.body)
+            handlers_item = [Branch(
+                shorten_str(f"{caught_str} raised?"),
+                self.build_items(body_list), handlers_item, handler.lineno,
+                jump_str)]
+        return (self.build_items(statement.body) + handlers_item
                 + self.build_items(statement.orelse)
                 + self.build_items(statement.finalbody))
 
@@ -778,10 +809,13 @@ class FlowBuilder:
         if isinstance(value, ast.Call) and list_pipe_chain_list(value):
             return self.build_pipe_steps(value, targets_list)
         call = self.find_main_call(statement)
+        function_info = self.resolve_function(call) if call else None
+        # A call to the script's own function (such as store.save(items))
+        # is not library I/O, whatever its name.
         sources_list = [source for source in (
             self.find_io_source(node) for node in ast.walk(statement)
-            if isinstance(node, ast.Call)) if source]
-        function_info = self.resolve_function(call) if call else None
+            if isinstance(node, ast.Call)
+            and not (function_info and node is call)) if source]
         if function_info is not None:
             step = self.build_function_step(call, function_info, targets_list)
         else:
@@ -836,16 +870,50 @@ class FlowBuilder:
         for keyword in call.keywords:
             inputs_list.append(self.make_port(
                 keyword.value, annotations_dict.get(keyword.arg or "", "")))
+        if function_info.body and all(
+                known is not function_info for known in self.called_list):
+            self.called_list.append(function_info)
         module_str = function_info.module
         if module_str and module_str not in self.modules_list:
             self.modules_list.append(module_str)
         name_str = dtypes.read_called_name_str(call.func).split(".")[-1]
-        description_str = (describe.make_sentence_str(function_info.summary)
-                           or describe.describe_name_str(name_str))
+        description_str = describe_function_str(function_info, name_str)
+        returns_str = function_info.returns or dtypes.infer_return_dtype_str(
+            strip_docstring_list(function_info.body))
         return Step(PROCESS_KIND, name_str, description_str, inputs_list,
-                    self.output_ports_list(targets_list,
-                                           function_info.returns),
+                    self.output_ports_list(targets_list, returns_str),
                     module_str)
+
+    def build_function_flow(self, function_info: FunctionInfo,
+                            script_name_str: str) -> Flow:
+        """The detailed flow of one function's body, for its own page.
+
+        Args:
+            function_info: The function (its body is kept by source.py).
+            script_name_str: The script's file name, for the page title.
+
+        Returns:
+            A flow from the function's signature to what it returns.
+            Functions it calls are added to called_list.
+        """
+        saved_tuple = (self.env_dict, self.notes_list, self.handles_dict,
+                       self.modules_list)
+        self.env_dict = dict(self.module_env_dict)
+        self.notes_list, self.handles_dict, self.modules_list = [], {}, []
+        if function_info.owner_class:
+            self.env_dict["self"] = function_info.owner_class
+        for name_str, annotation_str in function_info.parameters:
+            if annotation_str and name_str != "self":
+                self.env_dict[name_str] = annotation_str
+        body_list, end_str = split_final_return_tuple(
+            strip_docstring_list(function_info.body))
+        signature_str = format_signature_str(function_info)
+        flow = Flow(f"{script_name_str}: {signature_str}",
+                    self.build_items(body_list), self.modules_list,
+                    self.notes_list, signature_str, end_str)
+        (self.env_dict, self.notes_list, self.handles_dict,
+         self.modules_list) = saved_tuple
+        return flow
 
     def build_library_step(self, call: ast.Call | None,
                            targets_list: list[ast.expr]) -> Step:
@@ -926,6 +994,61 @@ def split_jump_tuple(body_list: list[ast.stmt]
     if body_list and type(body_list[-1]) in jumps_dict:
         return body_list[:-1], jumps_dict[type(body_list[-1])]
     return body_list, ""
+
+
+def describe_function_str(function_info: FunctionInfo, name_str: str) -> str:
+    """The description of a block that calls a function.
+
+    Args:
+        function_info: The called function.
+        name_str: The name the call uses.
+
+    Returns:
+        Its docstring summary, else a description built from its body,
+        else one read from its name.
+    """
+    if function_info.summary:
+        return describe.make_sentence_str(function_info.summary)
+    if function_info.body:
+        return describe.describe_own_function_str(
+            function_info.name, strip_docstring_list(function_info.body))
+    return describe.describe_name_str(name_str)
+
+
+def split_final_return_tuple(body_list: list[ast.stmt]
+                             ) -> tuple[list[ast.stmt], str]:
+    """Separate a body's final return statement.
+
+    Args:
+        body_list: A function body.
+
+    Returns:
+        The statements before the final return, and the end
+        terminator's text: "Return <value>", "Return" or "END".
+    """
+    if not body_list or not isinstance(body_list[-1], ast.Return):
+        return body_list, "END"
+    value = body_list[-1].value
+    if value is None:
+        return body_list[:-1], "Return"
+    return body_list[:-1], shorten_str(f"Return {ast.unparse(value)}")
+
+
+def format_signature_str(function_info: FunctionInfo) -> str:
+    """A function's name and parameters, as a page title.
+
+    Args:
+        function_info: The function.
+
+    Returns:
+        Text such as "load_sales(path)" or "Store.save(items)".
+    """
+    names_list = [name_str for name_str, _ in function_info.parameters
+                  if name_str not in ("self", "cls")]
+    prefix_str = (f"{function_info.owner_class}."
+                  if function_info.owner_class else "")
+    return shorten_str(f"{prefix_str}{function_info.name}"
+                       f"({', '.join(names_list)})")
 
 
 def extract_file_name_str(path_str: str) -> str:
@@ -1045,7 +1168,80 @@ def build_flow(info: ScriptInfo) -> Flow:
         The Flow from the entry point, with notes for what is left out.
     """
     builder = FlowBuilder(info)
+    entry_list, _ = split_final_return_tuple(
+        find_entry_statements_list(info.tree))
     items_list = insert_sections_list(builder.build_entry_items(
-        find_entry_statements_list(info.tree)), info.sections)
-    return Flow(info.path.name, items_list, builder.modules_list,
+        entry_list), info.sections)
+    flow = Flow(info.path.name, items_list, builder.modules_list,
                 builder.notes_list)
+    add_function_pages_none(flow, builder)
+    return flow
+
+
+def add_function_pages_none(flow: Flow, builder: FlowBuilder) -> None:
+    """Add a page for each function the flow calls, and theirs in turn.
+
+    Args:
+        flow: The main flow (its functions list is extended).
+        builder: The builder that drew the main flow.
+
+    Returns:
+        None. A function of a developed module is drawn with that
+        module's own names (its imports and helpers); at most
+        MAX_FUNCTION_PAGES_INT pages, each function once.
+    """
+    builders_dict: dict[str, FlowBuilder] = {str(builder.info.path): builder}
+    queue_list = [(called, str(called.source_path or builder.info.path))
+                  for called in builder.called_list]
+    seen_set: set[tuple[str, str, str]] = set()
+    for function_info, path_str in iter(queue_list):
+        key_tuple = (path_str, function_info.owner_class, function_info.name)
+        if key_tuple in seen_set or check_trivial_body_bool(
+                strip_docstring_list(function_info.body)):
+            continue
+        if len(flow.functions) >= MAX_FUNCTION_PAGES_INT:
+            break
+        seen_set.add(key_tuple)
+        page_builder = find_builder(builders_dict, path_str, builder)
+        flow.functions.append(page_builder.build_function_flow(
+            function_info, Path(path_str).name))
+        own_path_str = str(page_builder.info.path)
+        queue_list.extend((called, str(called.source_path or own_path_str))
+                          for called in page_builder.called_list)
+
+
+def check_trivial_body_bool(body_list: list[ast.stmt]) -> bool:
+    """Whether a function body is too small to deserve its own page.
+
+    Args:
+        body_list: The statements, without the docstring.
+
+    Returns:
+        True for a single simple statement (such as one return); its
+        block on the calling page already says everything.
+    """
+    return len(body_list) <= 1 and not any(
+        isinstance(statement, (ast.For, ast.AsyncFor, ast.While, ast.If,
+                               ast.With, ast.AsyncWith, ast.Try, ast.Match))
+        for statement in body_list)
+
+
+def find_builder(builders_dict: dict[str, "FlowBuilder"], path_str: str,
+                 fallback: "FlowBuilder") -> "FlowBuilder":
+    """The builder for a module file, created once.
+
+    Args:
+        builders_dict: Builders by file path (extended in place).
+        path_str: The module file.
+        fallback: The script's builder, used when the module cannot be
+            read.
+
+    Returns:
+        A builder that resolves names as that module does.
+    """
+    if path_str not in builders_dict:
+        try:
+            builders_dict[path_str] = FlowBuilder(load_script(Path(path_str)))
+        except (OSError, SyntaxError, ValueError):
+            builders_dict[path_str] = fallback
+    return builders_dict[path_str]

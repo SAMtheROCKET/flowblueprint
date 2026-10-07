@@ -234,17 +234,40 @@ out by Mermaid itself.
 | Long flows | Columns of at most 10 blocks joined by A/B connectors |
 
 Descriptions come from docstrings. Without one, FlowBlueprint writes a
-short, deterministic description from the code itself ("Calculate
-distance." for `calculate_distance`). Types come from annotations,
-well-known library calls, literals and naming conventions such as `_df`
-or `_list`; anything else is shown as `unknown` rather than guessed.
+short, deterministic description from the code itself: the function
+name read as a verb phrase plus what its body visibly does ("Load
+sales: opens path; reads CSV rows; returns rows."). Short statements
+are shown as written (`Set big = {}`, `Print 'skipping', fname`).
+Types come from annotations, well-known library calls, literals (also
+a returned list or dict built in the function) and naming conventions
+such as `_df` or `_list`; anything else is shown as `unknown` rather
+than guessed.
 
-## Two levels: detailed and summary
+Loops are framed: a light dashed box holds everything that repeats,
+from **For each row in rows** down to **Next row**, with a *repeat*
+arrow back to the top. `try`/`except` handlers appear as
+"KeyError raised?" decisions.
 
-One function is not always one block. `--level detailed` (the default)
-draws one block per call. `--level summary` packs consecutive operations
-into higher-level blocks (up to `--group-size`, default 4), each listing
-its operations with the inputs it needs and the outputs it leaves:
+## Three views: overview, main flow and every function
+
+By default (`--level full`) one drawing holds several pages, which
+draw.io shows as tabs and SVG, PNG, HTML and Markdown show one after
+another:
+
+1. **Overview**: the main flow with consecutive operations packed into
+   higher-level blocks (up to `--group-size`, default 4). Left out when
+   the main flow is already short.
+2. **Main flow**: one block per call, from START to END.
+3. **One page per function** you wrote that the flow calls (and the
+   functions they call, up to 40), from the function's signature to
+   what it returns, with its own loops and decisions.
+
+`--level detailed` draws pages 2 and 3; `--level summary` only the
+overview. A project folder gets its import overview first, then the
+pages of each entry-point script and notebook.
+
+A summary block lists its operations with the inputs it needs and the
+outputs it leaves:
 
 ![The same script at summary level: settings, a loop with one packed "Load, repair and flag" block, a decision, and one "Compute and save" block](https://raw.githubusercontent.com/SAMtheROCKET/flowblueprint/main/docs/images/station_report_summary.svg)
 

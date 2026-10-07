@@ -9,10 +9,16 @@ import html
 
 from flowblueprint.model import (
     CONNECTOR_KIND, DATA_KIND, DATABASE_KIND, DECISION_KIND, DOCUMENT_KIND,
-    LOOP_CLOSE_KIND, LOOP_OPEN_KIND, PLOT_KIND, SECTION_KIND, STORAGE_KIND,
-    TERMINATOR_KIND, TEXT_KIND, Diagram, Edge, Node)
+    LOOP_CLOSE_KIND, LOOP_FRAME_KIND, LOOP_OPEN_KIND, PLOT_KIND,
+    SECTION_KIND, STORAGE_KIND, TERMINATOR_KIND, TEXT_KIND, Diagram, Edge,
+    Node)
+from flowblueprint.layout import route_back_list
 
 LINE_HEIGHT_FLOAT = 15.0
+# Renderers without Helvetica or Arial (Linux PNG output) skip the text
+# unless a family they have is listed.
+FONT_FAMILY_STR = ("Helvetica, Arial, 'Liberation Sans', 'DejaVu Sans', "
+                   "sans-serif")
 STROKE_STR = 'stroke="#222222" stroke-width="1.2"'
 
 
@@ -43,7 +49,7 @@ def draw_shape_str(node: Node) -> str:
     fill_str = f'fill="{node.fill or "#ffffff"}" {STROKE_STR}'
     if node.kind == TEXT_KIND:
         return ""
-    if node.kind in (TERMINATOR_KIND, SECTION_KIND):
+    if node.kind in (TERMINATOR_KIND, SECTION_KIND, LOOP_FRAME_KIND):
         return draw_rounded_str(node, fill_str)
     if node.kind == CONNECTOR_KIND:
         return (f'<circle cx="{left + node.width / 2}" '
@@ -71,7 +77,7 @@ def draw_shape_str(node: Node) -> str:
 
 
 def draw_rounded_str(node: Node, fill_str: str) -> str:
-    """A terminator, or a dashed section banner, with round ends.
+    """A terminator, a dashed section banner or a loop frame.
 
     Args:
         node: The node.
@@ -80,6 +86,11 @@ def draw_rounded_str(node: Node, fill_str: str) -> str:
     Returns:
         SVG markup.
     """
+    if node.kind == LOOP_FRAME_KIND:
+        return (f'<rect x="{node.x_px}" y="{node.y_px}" '
+                f'width="{node.width}" height="{node.height}" rx="8" '
+                f'fill="{node.fill}" stroke="#8a9bb5" stroke-width="1" '
+                'stroke-dasharray="5 4"/>')
     dash_str = (' stroke-dasharray="5 3"' if node.kind == SECTION_KIND
                 else "")
     return (f'<rect x="{node.x_px}" y="{node.y_px}" width="{node.width}" '
@@ -244,6 +255,8 @@ def route_points_list(edge: Edge, nodes_dict: dict[str, Node]
         The route's points, from the source to the arrow tip.
     """
     source, target = nodes_dict[edge.source_id], nodes_dict[edge.target_id]
+    if edge.back_depth:
+        return route_back_list(source, target, edge.back_depth)
     source_mid_x = source.x_px + source.width / 2
     target_mid_x = target.x_px + target.width / 2
     target_mid_y = target.y_px + target.height / 2
@@ -272,6 +285,36 @@ def route_points_list(edge: Edge, nodes_dict: dict[str, Node]
             (target_mid_x, target.y_px)]
 
 
+def draw_edge_str(edge: Edge, nodes_dict: dict[str, Node]) -> str:
+    """An arrow with its label.
+
+    Args:
+        edge: The edge.
+        nodes_dict: Nodes by id.
+
+    Returns:
+        SVG markup. A loop's back arrow carries its label upright
+        along the arrow's vertical part.
+    """
+    points_list = route_points_list(edge, nodes_dict)
+    markup_str = (f'<polyline points="{format_points_str(points_list)}" '
+                  f'fill="none" {STROKE_STR} marker-end="url(#arrow)"/>')
+    if edge.label and edge.back_depth:
+        gutter_x = points_list[1][0] + 10
+        middle_y = (points_list[1][1] + points_list[2][1]) / 2
+        return markup_str + (
+            f'<text x="{gutter_x:.1f}" y="{middle_y:.1f}" '
+            'text-anchor="middle" font-style="italic" '
+            f'transform="rotate(-90 {gutter_x:.1f} {middle_y:.1f})">'
+            f'{html.escape(edge.label)}</text>')
+    if edge.label:
+        label_x, label_y = points_list[0]
+        return markup_str + (f'<text x="{label_x + 6:.1f}" '
+                             f'y="{label_y + 14:.1f}">'
+                             f'{html.escape(edge.label)}</text>')
+    return markup_str
+
+
 def render_svg_str(diagram: Diagram) -> str:
     """Render a diagram as SVG.
 
@@ -292,22 +335,20 @@ def render_svg_str(diagram: Diagram) -> str:
         '<svg xmlns="http://www.w3.org/2000/svg" '
         f'width="{width_float:.0f}" height="{height_float:.0f}" '
         f'viewBox="0 0 {width_float:.0f} {height_float:.0f}" '
-        'font-family="Helvetica, Arial, sans-serif" font-size="11">',
+        f'font-family="{FONT_FAMILY_STR}" font-size="11">',
         f'<title>{html.escape(diagram.title)}</title>',
         '<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" '
         'markerWidth="7" markerHeight="7" orient="auto-start-reverse">'
         '<path d="M0,0 L10,5 L0,10 z" fill="#222222"/></marker></defs>',
         '<rect width="100%" height="100%" fill="#ffffff"/>']
-    for edge in diagram.edges:
-        points_list = route_points_list(edge, nodes_dict)
-        parts_list.append(
-            f'<polyline points="{format_points_str(points_list)}" '
-            f'fill="none" {STROKE_STR} marker-end="url(#arrow)"/>')
-        if edge.label:
-            label_x, label_y = points_list[0]
-            parts_list.append(f'<text x="{label_x + 6:.1f}" '
-                              f'y="{label_y + 14:.1f}">{edge.label}</text>')
+    # Loop frames lie under the arrows; every other shape lies over them.
+    frames_list = [node for node in diagram.nodes
+                   if node.kind == LOOP_FRAME_KIND]
+    parts_list.extend(draw_shape_str(node) for node in frames_list)
+    parts_list.extend(draw_edge_str(edge, nodes_dict)
+                      for edge in diagram.edges)
     for node in diagram.nodes:
-        parts_list.append(draw_shape_str(node) + draw_label_str(node))
+        if node.kind != LOOP_FRAME_KIND:
+            parts_list.append(draw_shape_str(node) + draw_label_str(node))
     parts_list.append("</svg>")
     return "\n".join(parts_list) + "\n"

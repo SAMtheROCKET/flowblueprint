@@ -16,16 +16,20 @@ import sys
 import tomllib
 
 from flowblueprint import __version__
-from flowblueprint.drawio import render_drawio_str
+from flowblueprint.document import (
+    LEVELS_TUPLE, layout_pages_list, list_page_flows_list,
+    stack_pages_diagram)
+from flowblueprint.drawio import render_drawio_pages_str, render_drawio_str
 from flowblueprint.flow import build_flow
-from flowblueprint.layout import layout_flow
 from flowblueprint.grouping import choose_group_depth_int, group_project
-from flowblueprint.mermaid import render_markdown_str, render_mermaid_str
+from flowblueprint.mermaid import (
+    render_markdown_pages_str, render_markdown_str, render_mermaid_str)
 from flowblueprint.model import Branch, Diagram, Flow, Item, Loop, Step
 from flowblueprint.overview import layout_project
-from flowblueprint.page import render_html_str
+from flowblueprint.page import render_html_pages_str, render_html_str
 from flowblueprint.png import PngUnavailableError, render_png_bytes
-from flowblueprint.project import load_project
+from flowblueprint.project import (
+    ENTRY_KIND, NOTEBOOK_KIND, Project, load_project)
 from flowblueprint.rules import check_diagram
 from flowblueprint.source import load_script
 from flowblueprint.svg import render_svg_str
@@ -36,6 +40,8 @@ OUTPUT_SUFFIXES_TUPLE = (".drawio", ".svg", ".png", ".html", ".md",
 # Mermaid places shapes itself, so its flows are laid out in one column.
 MERMAID_SUFFIXES_TUPLE = (".md", ".mmd")
 SINGLE_COLUMN_BLOCKS_INT = 1_000_000
+# Pages drawn for a project folder at most (the overview included).
+MAX_PROJECT_PAGES_INT = 60
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -61,10 +67,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--overrides", type=Path,
                         help="TOML file replacing titles or descriptions "
              "and naming groups of functions to pack")
-    parser.add_argument("--level", choices=("detailed", "summary"),
-                        default="detailed",
-                        help="detailed: one block per call; summary: pack "
-                             "consecutive operations into fewer blocks")
+    parser.add_argument("--level", choices=LEVELS_TUPLE, default="full",
+                        help="full (default): an overview, the detailed "
+                             "main flow and one page per function; "
+                             "detailed: the main flow and the function "
+                             "pages; summary: the overview only")
     parser.add_argument("--group-size", type=int, default=4,
                         help="most operations per summary block "
                              "(default 4)")
@@ -88,6 +95,9 @@ def add_check_options_none(parser: argparse.ArgumentParser) -> None:
     """
     parser.add_argument("--check", action="store_true",
                         help="only check; exit 1 on rule errors")
+    parser.add_argument("--verbose", action="store_true",
+                        help="also print what is not drawn and info "
+                             "findings (such as unknown types)")
     parser.add_argument("--up-to-date", action="store_true",
                         help="write nothing; exit 1 when the output file "
                              "is missing or differs from a fresh drawing "
@@ -159,32 +169,74 @@ def load_flow(script: Path, overrides: Path | None,
     groups_list = settings_dict.get("groups", [])
     if groups_list:
         flow.items = apply_groups_list(flow.items, groups_list)
-    apply_overrides_none(flow.items, settings_dict.get("blocks", {}))
+    for page_flow in (flow, *flow.functions):
+        apply_overrides_none(page_flow.items,
+                             settings_dict.get("blocks", {}))
     if level_str == "summary":
         flow.items = summarise_items_list(flow.items, group_size_int)
     return flow
 
 
-def report_findings_bool(script: Path, flow: Flow, diagram: Diagram,
-                         max_blocks_int: int) -> bool:
-    """Print notes and rule findings.
+def report_findings_bool(script: Path, flows_list: list[Flow],
+                         pages_list: list[Diagram], max_blocks_int: int,
+                         verbose: bool = False) -> bool:
+    """Print rule findings, and with verbose also notes and infos.
 
     Args:
         script: The script, for the location prefix.
-        flow: The flow, whose notes list what was not drawn.
-        diagram: The laid-out diagram to check.
+        flows_list: The page flows, whose notes list what was not drawn.
+        pages_list: The laid-out pages to check.
         max_blocks_int: The column block limit.
+        verbose: Whether to print notes and info findings.
 
     Returns:
         True when any finding is an error.
     """
-    findings_list = check_diagram(diagram, max_blocks_int)
-    for note in flow.notes:
-        print(f"{script}:{note.line}: note: {note.message}")
+    findings_list = [finding for page in pages_list
+                     for finding in check_diagram(page, max_blocks_int)]
+    notes_list = sorted({(note.line, note.message) for page_flow
+                         in flows_list for note in page_flow.notes})
+    hidden_int = 0
+    for line_int, message_str in notes_list:
+        if verbose:
+            print(f"{script}:{line_int}: note: {message_str}")
+        hidden_int += not verbose
     for finding in findings_list:
+        if finding.severity == "info" and not verbose:
+            hidden_int += 1
+            continue
         print(f"{script}:{finding.line}: {finding.code} {finding.severity}: "
               f"{finding.message}")
+    if hidden_int:
+        print(f"{hidden_int} note(s) about parts not drawn or types not "
+              "known; --verbose lists them")
     return any(finding.severity == "error" for finding in findings_list)
+
+
+def render_pages_str(output: Path, pages_list: list[Diagram],
+                     notes_list: list[str]) -> str:
+    """Render pages in the format the output suffix names.
+
+    Args:
+        output: The output file.
+        pages_list: The pages (one column each for Mermaid formats).
+        notes_list: Lines about what the diagrams leave out.
+
+    Returns:
+        The file text (for .png, the SVG it is rasterised from). draw.io
+        gets one tab per page, SVG and PNG one stacked image, HTML and
+        Markdown a section per page and .mmd the first page only.
+    """
+    suffix_str = output.suffix.lower()
+    if suffix_str in (".svg", ".png"):
+        return render_svg_str(stack_pages_diagram(pages_list))
+    if suffix_str == ".html":
+        return render_html_pages_str(pages_list, notes_list)
+    if suffix_str == ".md":
+        return render_markdown_pages_str(pages_list, notes_list)
+    if suffix_str == ".mmd":
+        return render_mermaid_str(pages_list[0])
+    return render_drawio_pages_str(pages_list)
 
 
 def render_output_str(output: Path, diagram: Diagram,
@@ -302,7 +354,7 @@ def check_output_suffix_bool(output: Path | None) -> bool:
 
 
 def run_project_int(arguments: argparse.Namespace) -> int:
-    """Draw a project folder's overview.
+    """Draw a project folder: its overview and its entry points' pages.
 
     Args:
         arguments: The parsed command line.
@@ -320,18 +372,59 @@ def run_project_int(arguments: argparse.Namespace) -> int:
         return 2
     if arguments.check:
         return 0
+    flows_list = [] if arguments.level == "summary" else (
+        list_entry_flows_list(folder, project, arguments))
     depth_int = (choose_group_depth_int(project)
                  if arguments.group_depth is None else arguments.group_depth)
     if depth_int > 0:
         project = group_project(project, depth_int)
         print(f"grouped into {len(project.files)} blocks at folder depth "
               f"{depth_int} (use --group-depth to change)")
-    diagram = layout_project(project)
     output = arguments.output or folder / "architecture.drawio"
+    blocks_int = (SINGLE_COLUMN_BLOCKS_INT if output.suffix.lower()
+                  in MERMAID_SUFFIXES_TUPLE else arguments.max_blocks)
+    pages_list = [layout_project(project),
+                  *layout_pages_list(flows_list, blocks_int)]
     return finish_output_int(
         arguments, output,
-        render_output_str(output, diagram, project.notes),
-        f"{len(project.files)} files, {len(project.edges)} imports")
+        render_pages_str(output, pages_list, project.notes),
+        f"{len(project.files)} files, {len(project.edges)} imports, "
+        f"{len(pages_list)} page(s)")
+
+
+def list_entry_flows_list(folder: Path, project: Project,
+                          arguments: argparse.Namespace) -> list[Flow]:
+    """The detailed pages of a project's entry points and notebooks.
+
+    Args:
+        folder: The project folder.
+        project: The loaded project (files before grouping).
+        arguments: The parsed command line.
+
+    Returns:
+        For each entry point or notebook, its main flow and the pages of
+        the functions it calls, titled with the file's path; a function
+        drawn once is not drawn again. At most MAX_PROJECT_PAGES_INT - 1
+        pages; files that cannot be read are skipped.
+    """
+    flows_list: list[Flow] = []
+    seen_set: set[str] = set()
+    for info in project.files:
+        if info.kind not in (ENTRY_KIND, NOTEBOOK_KIND):
+            continue
+        try:
+            flow = load_flow(folder / info.path, arguments.overrides)
+        except (OSError, SyntaxError, ValueError, tomllib.TOMLDecodeError):
+            continue
+        name_str = flow.script_name
+        for page_flow in (flow, *flow.functions):
+            title_str = page_flow.script_name.replace(
+                name_str, info.path.as_posix(), 1)
+            if title_str not in seen_set:
+                seen_set.add(title_str)
+                page_flow.script_name = title_str
+                flows_list.append(page_flow)
+    return flows_list[:MAX_PROJECT_PAGES_INT - 1]
 
 
 def main(argv_list: list[str] | None = None) -> int:
@@ -351,25 +444,47 @@ def main(argv_list: list[str] | None = None) -> int:
     if script.is_dir():
         return run_project_int(arguments)
     try:
-        flow = load_flow(script, arguments.overrides, arguments.level,
-                         arguments.group_size)
+        flow = load_flow(script, arguments.overrides)
     except (OSError, SyntaxError, ValueError,
             tomllib.TOMLDecodeError) as error:
         print(f"flowblueprint: cannot read {script}: {error}",
               file=sys.stderr)
         return 2
-    diagram = layout_flow(flow, arguments.max_blocks)
-    has_errors = report_findings_bool(script, flow, diagram,
-                                      arguments.max_blocks)
+    flows_list = list_page_flows_list(flow, arguments.level,
+                                      arguments.group_size)
+    pages_list = layout_pages_list(flows_list, arguments.max_blocks)
+    has_errors = report_findings_bool(script, flows_list, pages_list,
+                                      arguments.max_blocks,
+                                      arguments.verbose)
     if arguments.check:
         return 1 if has_errors else 0
     output = arguments.output or script.with_suffix(".drawio")
     if output.suffix.lower() in MERMAID_SUFFIXES_TUPLE:
-        diagram = layout_flow(flow, SINGLE_COLUMN_BLOCKS_INT)
-    notes_list = [f"line {note.line}: {note.message}" for note in flow.notes]
+        pages_list = layout_pages_list(flows_list, SINGLE_COLUMN_BLOCKS_INT)
+    notes_list = sorted({f"line {note.line}: {note.message}"
+                         for page_flow in flows_list
+                         for note in page_flow.notes})
     return finish_output_int(
-        arguments, output, render_output_str(output, diagram, notes_list),
-        f"{len(diagram.nodes)} shapes, {diagram.column_count} column(s)")
+        arguments, output, render_pages_str(output, pages_list, notes_list),
+        f"{len(pages_list)} page(s): {describe_pages_str(flows_list)}")
+
+
+def describe_pages_str(flows_list: list[Flow]) -> str:
+    """Name the pages written, for the success message.
+
+    Args:
+        flows_list: The page flows.
+
+    Returns:
+        Text such as "overview, main flow, 3 functions".
+    """
+    names_list = [("overview" if page_flow.script_name.endswith(
+        ": overview") else "main flow") for page_flow in flows_list
+        if page_flow.start_label == "START"]
+    functions_int = len(flows_list) - len(names_list)
+    if functions_int:
+        names_list.append(f"{functions_int} function(s)")
+    return ", ".join(names_list)
 
 
 if __name__ == "__main__":

@@ -89,7 +89,7 @@ function activate(context) {
             pythonPath, tool, displayName: manifest.displayName,
             version: manifest.toolVersion, runPython,
         });
-        const args = drawArguments(uri.fsPath, target, config.get('level', 'detailed'), force);
+        const args = drawArguments(uri.fsPath, target, config.get('level', 'full'), force);
         const result = await vscode.window.withProgress(
             { location: vscode.ProgressLocation.Notification, title: 'Drawing the architecture...' },
             () => runPython(pythonPath, tool, args));

@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="520" height="406" viewBox="0 0 520 406" font-family="Helvetica, Arial, sans-serif" font-size="11">
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="406" viewBox="0 0 520 406" font-family="Helvetica, Arial, 'Liberation Sans', 'DejaVu Sans', sans-serif" font-size="11">
 <title>examples architecture</title>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222222"/></marker></defs>
 <rect width="100%" height="100%" fill="#ffffff"/>
-<polyline points="360.0,178.0 360.0,232.0 360.0,232.0 360.0,248.0" fill="none" stroke="#222222" stroke-width="1.2" marker-end="url(#arrow)"/>
+<polyline points="360.0,178.0 360.0,192.0 360.0,192.0 360.0,248.0" fill="none" stroke="#222222" stroke-width="1.2" marker-end="url(#arrow)"/>
 <rect x="20.0" y="60.0" width="40.0" height="24.0" fill="#d5e8d4" stroke="#222222" stroke-width="1.2"/>
 <text x="70.0" y="76.0" text-anchor="start">entry point (runs)</text>
 <rect x="20.0" y="94.0" width="40.0" height="24.0" fill="#dae8fc" stroke="#222222" stroke-width="1.2"/>

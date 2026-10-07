@@ -19,8 +19,8 @@ from flowblueprint.flow import build_flow
 from flowblueprint.layout import layout_flow
 from flowblueprint.model import (
     CONNECTOR_KIND, DATABASE_KIND, DATA_KIND, DOCUMENT_KIND, LEGEND_KIND,
-    LOOP_CLOSE_KIND, LOOP_OPEN_KIND, PLOT_KIND, SECTION_KIND, Branch, Edge,
-    Loop, Node)
+    LOOP_CLOSE_KIND, LOOP_FRAME_KIND, LOOP_OPEN_KIND, PLOT_KIND,
+    SECTION_KIND, Branch, Edge, Loop, Node)
 from flowblueprint.routing import Route, pack_slots_tuple, place_ports_none
 from flowblueprint.rules import check_diagram
 from flowblueprint.source import load_script
@@ -148,8 +148,8 @@ class StepTests(unittest.TestCase):
         """)
         self.assertEqual(len(flow.items), 1)
         self.assertEqual(flow.items[0].description,
-                         "Set a_int; set b_list; append a_int to b_list; "
-                         "and 2 more.")
+                         "Set a_int = 1; set b_list = []; append a_int to "
+                         "b_list; and 2 more.")
 
     def test_pipe_chain_becomes_one_step_per_function(self):
         flow = flow_of("""
@@ -308,7 +308,10 @@ class ControlFlowTests(unittest.TestCase):
         branch = loop.body[0]
         self.assertIsInstance(branch, Branch)
         self.assertEqual(branch.yes_jump, "continue")
-        self.assertIn("handler for ValueError", flow.notes[0].message)
+        handler = flow.items[-1]
+        self.assertIsInstance(handler, Branch)
+        self.assertEqual(handler.condition, "ValueError raised?")
+        self.assertEqual(flow.notes, [])
 
     def test_continue_goes_to_loop_end_and_return_to_end(self):
         flow = flow_of("""
@@ -323,7 +326,9 @@ class ControlFlowTests(unittest.TestCase):
                 keep(2)
         """)
         edges = edges_by_label(layout_flow(flow))
-        self.assertIn(("item?", "for item in items", "Yes"), edges)
+        self.assertIn(("item?", "Next item", "Yes"), edges)
+        self.assertIn(("Next item", "For each item in items", "repeat"),
+                      edges)
         self.assertIn(("done?", "END", "Yes"), edges)
         self.assertNotIn(("item?", "keep Keep. in: item: unknown", "Yes"),
                          edges)
@@ -388,7 +393,9 @@ class LayoutTests(unittest.TestCase):
     def test_no_shapes_overlap(self):
         flow = build_flow(load_script(EXAMPLES / "station_report.py"))
         diagram = layout_flow(flow, 6)
-        boxes = [node for node in diagram.nodes]
+        # Loop frames lie behind the loop's shapes by design.
+        boxes = [node for node in diagram.nodes
+                 if node.kind != LOOP_FRAME_KIND]
         for index, first in enumerate(boxes):
             for second in boxes[index + 1:]:
                 overlap = (first.x_px < second.x_px + second.width

@@ -140,6 +140,36 @@ def split_tuple_annotation_list(annotation_str: str,
     return [UNKNOWN_DTYPE_STR] * count_int
 
 
+def infer_return_dtype_str(body_list: list[ast.stmt]) -> str:
+    """The type a function without a return annotation visibly returns.
+
+    Args:
+        body_list: The function's statements.
+
+    Returns:
+        The type of a returned literal, or of a returned name whose
+        every plain assignment in the body is a literal of one type
+        (such as rows = [] ... return rows); "" when the body does not
+        show it.
+    """
+    if not body_list or not isinstance(body_list[-1], ast.Return) or (
+            body_list[-1].value is None):
+        return ""
+    value = body_list[-1].value
+    if not isinstance(value, ast.Name):
+        dtype_str = infer_value_dtype_str(value)
+        return "" if dtype_str == UNKNOWN_DTYPE_STR else dtype_str
+    dtypes_set = {
+        infer_value_dtype_str(node.value)
+        for statement in body_list for node in ast.walk(statement)
+        if isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == value.id
+            for target in node.targets)}
+    if len(dtypes_set) == 1 and UNKNOWN_DTYPE_STR not in dtypes_set:
+        return dtypes_set.pop()
+    return ""
+
+
 def pick_known_dtype_str(*candidates_tuple: str) -> str:
     """The first candidate type that is known.
 

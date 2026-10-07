@@ -57,6 +57,26 @@ LIBRARY_PHRASES_DICT = {
 }
 
 CAMEL_BOUNDARY_PATTERN = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+# Statements whose code is at most this long are shown as written.
+SHORT_CODE_INT = 46
+LOG_METHODS_FROZENSET = frozenset((
+    "debug", "info", "warning", "warn", "error", "exception", "critical"))
+# Facts about a function body, by the called name's last part (or the
+# whole dotted name), for functions without a docstring.
+CALL_FACTS_DICT = {
+    "open": "opens {0}", "DictReader": "reads CSV rows",
+    "reader": "reads CSV rows", "writer": "writes CSV rows",
+    "DictWriter": "writes CSV rows", "read_csv": "reads the CSV table",
+    "to_csv": "saves a CSV file", "load": "loads saved data",
+    "dump": "saves data", "loads": "parses text", "dumps": "formats text",
+    "connect": "connects to the database", "execute": "runs SQL",
+    "executemany": "runs SQL", "commit": "commits to the database",
+    "get": "", "post": "", "savefig": "saves the figure",
+    "makedirs": "creates folder {0}", "mkdir": "creates a folder",
+    "listdir": "lists the files of {0}", "glob": "finds files",
+    "raise_for_status": "checks the HTTP status",
+}
+WEB_MODULES_TUPLE = ("requests", "httpx", "urllib", "aiohttp")
 
 
 def split_words_list(name_str: str) -> list[str]:
@@ -175,8 +195,17 @@ def describe_call_statement_str(call: ast.Call, targets_list: list[str]
         return f"{short_str} {first_str} to {receiver_str}"
     if short_str == "extend" and receiver_str and first_str:
         return f"extend {receiver_str} with {first_str}"
-    if short_str == "print":
-        return "print progress"
+    if short_str == "print" or (short_str in LOG_METHODS_FROZENSET
+                                and "log" in receiver_str.lower()):
+        verb_str = "print" if short_str == "print" else f"log {short_str}"
+        arguments_str = ", ".join(ast.unparse(argument)
+                                  for argument in call.args)
+        return shorten_code_str(f"{verb_str} {arguments_str}".strip())
+    if short_str in ("makedirs", "mkdir") and first_str:
+        return f"create folder {first_str}"
+    code_str = ast.unparse(call)
+    if targets_list and len(code_str) <= SHORT_CODE_INT:
+        return f"set {join_names_str(targets_list)} = {code_str}"
     if targets_list:
         return f"compute {join_names_str(targets_list)} with {short_str}"
     phrase_str = LIBRARY_PHRASES_DICT.get(short_str)
@@ -200,6 +229,10 @@ def describe_statement_str(statement: ast.stmt) -> str:
         names_list = list_target_names_list(targets_list)
         if isinstance(statement.value, ast.Call):
             return describe_call_statement_str(statement.value, names_list)
+        value_str = (ast.unparse(statement.value)
+                     if statement.value is not None else "")
+        if value_str and len(value_str) <= SHORT_CODE_INT:
+            return f"set {join_names_str(names_list)} = {value_str}"
         return f"set {join_names_str(names_list)}"
     if isinstance(statement, ast.Expr) and isinstance(statement.value,
                                                       ast.Call):
@@ -208,6 +241,91 @@ def describe_statement_str(statement: ast.stmt) -> str:
         names_list = [ast.unparse(target) for target in statement.targets]
         return f"delete {join_names_str(names_list)}"
     return f"run line {statement.lineno}"
+
+
+def shorten_code_str(text_str: str) -> str:
+    """Cut code shown in a block to a readable length.
+
+    Args:
+        text_str: A phrase that ends in code.
+
+    Returns:
+        The text, cut with "..." past 60 characters.
+    """
+    return text_str if len(text_str) <= 60 else text_str[:57] + "..."
+
+
+def describe_own_function_str(name_str: str,
+                              body_list: list[ast.stmt]) -> str:
+    """Describe a script function without a docstring from its body.
+
+    Args:
+        name_str: The function name.
+        body_list: Its statements.
+
+    Returns:
+        The name read as a verb phrase, then up to three facts the
+        body shows (files, loops, web and database calls) and what it
+        returns, such as "Load sales: opens path; reads CSV rows;
+        returns rows."
+    """
+    words_list = split_words_list(name_str)
+    phrase_str = (" ".join(words_list) if check_verb_first_bool(name_str)
+                  else f"run {name_str}")
+    facts_list = list_body_facts_list(body_list)[:3]
+    if body_list and isinstance(body_list[-1], ast.Return) and (
+            body_list[-1].value is not None):
+        facts_list.append(shorten_code_str(
+            "returns " + ast.unparse(body_list[-1].value)))
+    if not facts_list:
+        return make_sentence_str(phrase_str)
+    return make_sentence_str(f"{phrase_str}: {'; '.join(facts_list)}")
+
+
+def list_body_facts_list(body_list: list[ast.stmt]) -> list[str]:
+    """Facts a function body shows, in source order, without repeats.
+
+    Args:
+        body_list: The statements.
+
+    Returns:
+        Phrases such as "loops over rows" or "calls the web API".
+    """
+    facts_list: list[str] = []
+    nodes_list = sorted(
+        (node for statement in body_list for node in ast.walk(statement)
+         if hasattr(node, "lineno")),
+        key=lambda node: (node.lineno, node.col_offset))
+    for node in nodes_list:
+        fact_str = ""
+        if isinstance(node, (ast.For, ast.AsyncFor)):
+            fact_str = f"loops over {ast.unparse(node.iter)}"
+        elif isinstance(node, ast.While):
+            fact_str = f"repeats while {ast.unparse(node.test)}"
+        elif isinstance(node, ast.Call):
+            fact_str = describe_call_fact_str(node)
+        fact_str = shorten_code_str(fact_str) if fact_str else ""
+        if fact_str and fact_str not in facts_list:
+            facts_list.append(fact_str)
+    return facts_list
+
+
+def describe_call_fact_str(call: ast.Call) -> str:
+    """A body fact for one call, or "".
+
+    Args:
+        call: The call.
+
+    Returns:
+        "calls the web API" for requests-style calls, the
+        CALL_FACTS_DICT phrase for known operations, else "".
+    """
+    name_str = read_called_name_str(call.func)
+    if name_str.split(".")[0] in WEB_MODULES_TUPLE:
+        return "calls the web API"
+    template_str = CALL_FACTS_DICT.get(name_str.split(".")[-1], "")
+    first_str = ast.unparse(call.args[0]) if call.args else "it"
+    return template_str.format(first_str)
 
 
 def describe_group_str(statements_list: list[ast.stmt],

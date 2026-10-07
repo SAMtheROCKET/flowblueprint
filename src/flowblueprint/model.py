@@ -25,6 +25,9 @@ TERMINATOR_KIND = "terminator"
 DECISION_KIND = "decision"
 LOOP_OPEN_KIND = "loop_open"
 LOOP_CLOSE_KIND = "loop_close"
+# A light dashed frame drawn behind a loop's shapes, so the repeated part
+# reads as one unit.
+LOOP_FRAME_KIND = "loop_frame"
 CONNECTOR_KIND = "connector"
 TEXT_KIND = "text"
 LEGEND_KIND = "legend"
@@ -92,14 +95,17 @@ class Loop:
     """A for or while loop: an opening and a closing loop-limit shape.
 
     Args:
-        header: The short loop text, such as "for row in rows_list".
+        header: The short loop text, such as "For each row in rows_list".
         body: The items repeated inside the loop.
         line: The source line of the loop statement.
+        footer: The closing shape's text, such as "Next row"; "" repeats
+            the header.
     """
 
     header: str
     body: list["Item"] = field(default_factory=list)
     line: int = 0
+    footer: str = ""
 
 
 @dataclass
@@ -149,12 +155,22 @@ class Flow:
         items: The steps, loops and branches from start to end.
         modules: Developed modules used, in order of first use.
         notes: Statements not drawn, with reasons.
+        start_label: Text of the first terminator ("START", or a
+            function's signature on a function page).
+        end_label: Text of the last terminator ("END", or what a
+            function returns).
+        functions: The detailed flows of the script's own functions
+            that this flow calls, in the order they are first called
+            (each is drawn on a page of its own).
     """
 
     script_name: str
     items: list[Item] = field(default_factory=list)
     modules: list[str] = field(default_factory=list)
     notes: list[Note] = field(default_factory=list)
+    start_label: str = "START"
+    end_label: str = "END"
+    functions: list["Flow"] = field(default_factory=list)
 
 
 @dataclass
@@ -204,6 +220,9 @@ class Edge:
             source and enter the top of the target (project overviews).
         waypoints: Corner points between the source and the target, for
             arrows routed around other blocks; [] lets renderers route.
+        back_depth: For the arrow from a loop's closing shape back to its
+            opening shape, 1 + the loop's nesting depth (it runs up the
+            left side, further out for outer loops); 0 otherwise.
     """
 
     source_id: str
@@ -212,6 +231,7 @@ class Edge:
     is_side: bool = False
     enters_top: bool = False
     waypoints: list[tuple[float, float]] = field(default_factory=list)
+    back_depth: int = 0
 
 
 @dataclass

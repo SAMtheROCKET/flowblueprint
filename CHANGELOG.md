@@ -2,6 +2,50 @@
 
 ## Unreleased
 
+Changes from the owner's hands-on trial (7 October 2026), where loops
+were not visible, descriptions were vague and only one level of detail
+was drawn:
+
+- **Loops are visible**: each loop sits in a light dashed frame, reads
+  "For each row in rows" ... "Next row" (or "While ..." ... "Check the
+  condition again"), and has a *repeat* arrow from its closing shape
+  back to its opening shape; the loop's exit is labelled *done*. A loop
+  is never split across columns.
+- **Every function gets its own page**: the functions the flow calls
+  (and the ones they call, up to 40 per script) are drawn from their
+  signature ("load_sales(path)") to what they return ("Return rows").
+  A function of a developed module is read with that module's own
+  imports. draw.io files get one tab per page; SVG and PNG stack the
+  pages; HTML and Markdown show a section per page; .mmd keeps the
+  first page.
+- `--level full` (the new default): an overview at summary level (for
+  flows of six or more top-level items), the detailed main flow and the
+  function pages. `--level detailed` leaves the overview out;
+  `--level summary` draws only the overview.
+- **Project folders** add the detailed pages of each entry point and
+  notebook after the import overview.
+- **Clearer descriptions**: functions without a docstring are described
+  from their body (files opened, CSV/JSON/database/web calls, loops and
+  what they return); short statements are shown as written; print and
+  logging steps show their message; os.makedirs reads "Create folder
+  ...". A call to the script's own method named like a library writer
+  (store.save) is no longer drawn as a file write.
+- **Return types** of functions without annotations come from a
+  returned literal or a returned name built from one literal type
+  (rows = [] ... return rows gives list).
+- `try`/`except` handlers are drawn as "KeyError raised?" decisions
+  instead of being left out. A final `return` is the END terminator.
+- When `main()` does more than hand over to one function, that function
+  is drawn as a block with its own page instead of being pasted inline.
+- **Quieter terminal**: notes about parts not drawn and info findings
+  (unknown types) are summarised in one line; `--verbose` lists them.
+- PNG output shows its text on systems without Helvetica or Arial: the
+  SVG font list now also names Liberation Sans and DejaVu Sans.
+- A column holding only the last one or two blocks joins the column
+  before instead of adding a pair of connectors.
+- VS Code: the *Level* setting offers full (default), detailed and
+  summary.
+
 - `-o diagram.png` writes a PNG picture (twice the SVG size, white
   background) through the optional resvg renderer:
   `pip install "flowblueprint[png]"`. Without it, FlowBlueprint explains

@@ -1,8 +1,9 @@
 """Place a flow on a page, top to bottom and left to right.
 
 Each piece is laid out around a vertical spine at x = 0 and then moved
-into place. Loops become an opening and a closing loop-limit shape in
-the sequence, so a long loop may continue in the next column. A column
+into place. Loops become an opening and a closing loop-limit shape with
+an arrow from the closing shape back up to the opening one, inside a
+light dashed frame; a loop is never split across columns. A column
 holds at most ``max_blocks_int`` blocks; longer flows continue in the
 next column through a pair of lettered connectors (A, B, ...). Data
 sources sit to the left of the block that reads them and outputs to
@@ -15,8 +16,8 @@ import textwrap
 
 from flowblueprint.model import (
     CONNECTOR_KIND, DECISION_KIND, LEGEND_KIND, LOOP_CLOSE_KIND,
-    LOOP_OPEN_KIND, TERMINATOR_KIND, TEXT_KIND, Branch, Diagram,
-    Edge, Flow, Item, Loop, Node, Port, Step)
+    LOOP_FRAME_KIND, LOOP_OPEN_KIND, TERMINATOR_KIND, TEXT_KIND, Branch,
+    Diagram, Edge, Flow, Item, Loop, Node, Port, Step)
 
 BLOCK_WIDTH_FLOAT = 240.0
 BLOCK_CHARS_INT = 36
@@ -37,6 +38,8 @@ CONNECTOR_SIZE_FLOAT = 44.0
 LEGEND_WIDTH_FLOAT = 220.0
 MARGIN_FLOAT = 20.0
 HEADER_HEIGHT_FLOAT = 40.0
+LOOP_FRAME_FILL_STR = "#f4f8fd"
+LOOP_FRAME_PADDING_FLOAT = 8.0
 
 # Light fills that keep black text readable, one per developed module.
 MODULE_COLOURS_TUPLE = ("#dae8fc", "#d5e8d4", "#ffe6cc", "#e1d5e7",
@@ -51,11 +54,13 @@ class LoopMark:
         header: The loop text.
         is_open: True for the opening shape.
         line: The loop's source line.
+        footer: The closing shape's text ("" repeats the header).
     """
 
     header: str
     is_open: bool
     line: int = 0
+    footer: str = ""
 
 
 type Token = Step | LoopMark | Branch
@@ -178,7 +183,8 @@ def flatten_list(items_list: list[Item]) -> list[Token]:
         if isinstance(item, Loop):
             tokens_list.append(LoopMark(item.header, True, item.line))
             tokens_list.extend(flatten_list(item.body))
-            tokens_list.append(LoopMark(item.header, False, item.line))
+            tokens_list.append(LoopMark(item.header, False, item.line,
+                                        item.footer))
         else:
             tokens_list.append(item)
     return tokens_list
@@ -197,7 +203,8 @@ class LayoutBuilder:
         self.flow = flow
         self.max_blocks_int = max(3, max_blocks_int)
         self.count_int = 0
-        self.loop_jumps_list: list[dict[str, list[tuple[str, str]]]] = []
+        self.loop_jumps_list: list[dict] = []
+        self.loop_pairs_list: list[tuple[str, str, int]] = []
         self.return_exits_list: list[tuple[str, str]] = []
         self.extra_edges_list: list[Edge] = []
         self.colours_dict = {
@@ -305,19 +312,28 @@ class LayoutBuilder:
         Returns:
             The group.
         """
-        lines_list = wrap_list(mark.header, BLOCK_CHARS_INT)
+        text_str = mark.header if mark.is_open else (mark.footer
+                                                     or mark.header)
+        lines_list = wrap_list(text_str, BLOCK_CHARS_INT)
         height_float = max(44.0, len(lines_list) * LINE_HEIGHT_FLOAT + 22)
         kind_str = LOOP_OPEN_KIND if mark.is_open else LOOP_CLOSE_KIND
         group = self.place_single(kind_str, lines_list, BLOCK_WIDTH_FLOAT + 20,
                                   height_float, mark.line)
         if mark.is_open:
-            self.loop_jumps_list.append({"continue": [], "break": []})
+            self.loop_jumps_list.append({"continue": [], "break": [],
+                                         "open": group.entry})
         elif self.loop_jumps_list:
+            depth_int = len(self.loop_jumps_list)
             jumps_dict = self.loop_jumps_list.pop()
             self.extra_edges_list.extend(
                 Edge(source_id, group.entry, label_str)
                 for source_id, label_str in jumps_dict["continue"])
-            group.exits.extend(jumps_dict["break"])
+            self.extra_edges_list.append(Edge(
+                group.entry, jumps_dict["open"], "repeat",
+                back_depth=depth_int))
+            self.loop_pairs_list.append((jumps_dict["open"], group.entry,
+                                         depth_int))
+            group.exits = [(group.entry, "done"), *jumps_dict["break"]]
         return group
 
     def place_branch(self, branch: Branch) -> Group:
@@ -446,27 +462,31 @@ class LayoutBuilder:
         return self.stack([self.place_token(token)
                            for token in flatten_list(items_list)])
 
-    def split_columns_list(self, tokens_list: list[Token]
+    def split_columns_list(self, items_list: list[Item]
                            ) -> list[list[Token]]:
-        """Split top-level tokens into columns of at most max blocks.
+        """Split top-level items into columns of at most max blocks.
 
         Args:
-            tokens_list: The top-level tokens.
+            items_list: The top-level items.
 
         Returns:
-            The tokens of each column; a token larger than the limit
-            gets a column of its own.
+            The tokens of each column. A loop stays in one column; an
+            item larger than the limit gets a column of its own.
         """
-        columns_list: list[list[Token]] = [[]]
+        columns_list: list[list[Item]] = [[]]
         count_int = 0
-        for token in tokens_list:
+        for token in items_list:
             size_int = count_blocks_int(token)
             if columns_list[-1] and count_int + size_int > self.max_blocks_int:
                 columns_list.append([])
                 count_int = 0
             columns_list[-1].append(token)
             count_int += size_int
-        return columns_list
+        if len(columns_list) > 1 and count_int <= 2:
+            # A column holding only the last block or two is not worth
+            # a pair of connectors: those blocks join the column before.
+            columns_list[-2].extend(columns_list.pop())
+        return [flatten_list(column_list) for column_list in columns_list]
 
     def place_column(self, tokens_list: list[Token], index_int: int,
                      total_int: int) -> Group:
@@ -483,17 +503,13 @@ class LayoutBuilder:
         letters_str = string.ascii_uppercase
         groups_list = []
         if index_int == 0:
-            groups_list.append(self.place_single(TERMINATOR_KIND, ["START"],
-                                                 TERMINATOR_WIDTH_FLOAT,
-                                                 TERMINATOR_HEIGHT_FLOAT))
+            groups_list.append(self.place_terminator(self.flow.start_label))
         else:
             groups_list.append(self.place_connector(letters_str[(index_int - 1)
                                                                 % 26]))
         groups_list.extend(self.place_token(token) for token in tokens_list)
         if index_int == total_int - 1:
-            end_group = self.place_single(TERMINATOR_KIND, ["END"],
-                                          TERMINATOR_WIDTH_FLOAT,
-                                          TERMINATOR_HEIGHT_FLOAT)
+            end_group = self.place_terminator(self.flow.end_label)
             self.extra_edges_list.extend(
                 Edge(source_id, end_group.entry, label_str)
                 for source_id, label_str in self.return_exits_list)
@@ -506,6 +522,43 @@ class LayoutBuilder:
         for node in column.nodes:
             node.column = index_int
         return column
+
+    def place_title_node(self, start_node: Node, left_float: float) -> Node:
+        """The page title, centred over START but never left of the flow.
+
+        Args:
+            start_node: The placed START terminator.
+            left_float: The left edge of the first column.
+
+        Returns:
+            A text node wide enough for the whole title.
+        """
+        width_float = max(BLOCK_WIDTH_FLOAT,
+                          7.0 * len(self.flow.script_name) + 20.0)
+        centre_float = start_node.x_px + start_node.width / 2
+        return Node(self.make_id_str(), TEXT_KIND, [self.flow.script_name],
+                    max(left_float, centre_float - width_float / 2),
+                    MARGIN_FLOAT, width_float, 24.0)
+
+    def place_terminator(self, text_str: str) -> Group:
+        """A START or END terminator, wide enough for its text.
+
+        Args:
+            text_str: "START", "END", a signature or a return value.
+
+        Returns:
+            The group.
+        """
+        lines_list = textwrap.wrap(text_str.replace(", ", ",\u00a0"), 40,
+                                   break_long_words=False) or [""]
+        lines_list = [line_str.replace("\u00a0", " ")
+                      for line_str in lines_list]
+        width_float = max(TERMINATOR_WIDTH_FLOAT,
+                          7.0 * max(map(len, lines_list)) + 36.0)
+        height_float = max(TERMINATOR_HEIGHT_FLOAT,
+                           len(lines_list) * LINE_HEIGHT_FLOAT + 16.0)
+        return self.place_single(TERMINATOR_KIND, lines_list, width_float,
+                                 height_float)
 
     def place_connector(self, letter_str: str) -> Group:
         """An on-page connector circle.
@@ -543,8 +596,7 @@ class LayoutBuilder:
         Returns:
             The diagram with absolute coordinates.
         """
-        tokens_list = flatten_list(self.flow.items)
-        columns_list = self.split_columns_list(tokens_list)
+        columns_list = self.split_columns_list(self.flow.items)
         diagram = Diagram(self.flow.script_name,
                           column_count=len(columns_list))
         diagram.nodes.extend(self.build_legend_nodes_list())
@@ -555,17 +607,88 @@ class LayoutBuilder:
             column = self.place_column(tokens, index_int, len(columns_list))
             column.shift_none(x_float - column.left, top_float)
             if index_int == 0:
-                start_node = column.nodes[0]
-                diagram.nodes.append(Node(
-                    self.make_id_str(), TEXT_KIND, [self.flow.script_name],
-                    start_node.x_px + start_node.width / 2
-                    - BLOCK_WIDTH_FLOAT / 2, MARGIN_FLOAT,
-                    BLOCK_WIDTH_FLOAT, 24.0))
+                diagram.nodes.append(self.place_title_node(
+                    column.nodes[0], x_float))
             diagram.nodes.extend(column.nodes)
             diagram.edges.extend(column.edges)
             x_float = column.right + COLUMN_GAP_FLOAT
         diagram.edges.extend(self.extra_edges_list)
+        diagram.nodes[:0] = self.build_loop_frames_list(diagram.nodes)
+        overflow_float = MARGIN_FLOAT - min(node.x_px
+                                            for node in diagram.nodes)
+        if overflow_float > 0:
+            for node in diagram.nodes:
+                node.x_px += overflow_float
         return diagram
+
+    def build_loop_frames_list(self, nodes_list: list[Node]) -> list[Node]:
+        """Light frames behind each loop, from its opening to closing shape.
+
+        Args:
+            nodes_list: The placed nodes.
+
+        Returns:
+            One frame per loop, outer loops first (drawn underneath),
+            covering the shapes created between the loop's two shapes
+            and its back arrow.
+        """
+        order_dict = {node.node_id: int(node.node_id[1:])
+                      for node in nodes_list}
+        frames_list = []
+        for open_id, close_id, depth_int in sorted(
+                self.loop_pairs_list, key=lambda pair: pair[2]):
+            members_list = [
+                node for node in nodes_list
+                if order_dict[open_id] <= order_dict[node.node_id]
+                <= order_dict[close_id]]
+            left_float = min([node.x_px for node in members_list] + [
+                compute_back_gutter_float(members_list[0], depth_int)])
+            right_float = max(node.x_px + node.width for node in members_list)
+            top_float = min(node.y_px for node in members_list)
+            bottom_float = max(node.y_px + node.height
+                               for node in members_list)
+            pad_float = LOOP_FRAME_PADDING_FLOAT
+            frames_list.append(Node(
+                self.make_id_str(), LOOP_FRAME_KIND, [],
+                left_float - pad_float, top_float - pad_float,
+                right_float - left_float + 2 * pad_float,
+                bottom_float - top_float + 2 * pad_float,
+                fill=LOOP_FRAME_FILL_STR, column=members_list[0].column))
+        return frames_list
+
+
+def compute_back_gutter_float(open_node: Node, depth_int: int) -> float:
+    """The x of a loop's back arrow, left of its opening shape.
+
+    Args:
+        open_node: The loop's opening shape.
+        depth_int: 1 for an outermost loop, 2 inside it, and so on.
+
+    Returns:
+        The x coordinate; inner loops run closer to their shapes, so
+        nested back arrows do not overlap.
+    """
+    return open_node.x_px - max(6.0, 26.0 - 8.0 * (depth_int - 1))
+
+
+def route_back_list(source: Node, target: Node, depth_int: int
+                    ) -> list[tuple[float, float]]:
+    """The route of a loop's back arrow, up its left side.
+
+    Args:
+        source: The loop's closing shape.
+        target: The loop's opening shape.
+        depth_int: The loop's nesting depth (see Edge.back_depth).
+
+    Returns:
+        Points from the closing shape's left middle to the opening
+        shape's left middle.
+    """
+    gutter_float = compute_back_gutter_float(target, depth_int)
+    source_y = source.y_px + source.height / 2
+    target_y = target.y_px + target.height / 2
+    return [(source.x_px, source_y), (gutter_float, source_y),
+            (gutter_float, target_y), (target.x_px, target_y)]
 
 
 def layout_flow(flow: Flow, max_blocks_int: int = 10) -> Diagram:

@@ -37,8 +37,42 @@ def render_html_str(diagram: Diagram, notes_list: list[str]) -> str:
     Returns:
         The HTML document text.
     """
-    title_str = html.escape(diagram.title)
-    svg_str = render_svg_str(diagram)
+    return render_html_pages_str([diagram], notes_list)
+
+
+def list_notes_html_list(notes_list: list[str]) -> list[str]:
+    """The "Not drawn" section of a page.
+
+    Args:
+        notes_list: Lines about what the diagrams leave out.
+
+    Returns:
+        HTML lines; [] when nothing is left out.
+    """
+    if not notes_list:
+        return []
+    return ["<h2>Not drawn</h2>", "<ul>" + "".join(
+        f"<li>{html.escape(note_str)}</li>" for note_str in notes_list)
+        + "</ul>"]
+
+
+def render_html_pages_str(pages_list: list[Diagram],
+                          notes_list: list[str]) -> str:
+    """Render diagrams as one HTML page with a section per diagram.
+
+    Args:
+        pages_list: The pages; the first one's title heads the page.
+        notes_list: Lines about what the diagrams leave out.
+
+    Returns:
+        The HTML document text.
+    """
+    title_str = html.escape(pages_list[0].title)
+    figures_list = [
+        (f"<h2>{html.escape(diagram.title)}</h2>"
+         if len(pages_list) > 1 else "")
+        + f"<figure>{render_svg_str(diagram)}</figure>"
+        for diagram in pages_list]
     parts_list = [
         "<!doctype html>", '<html lang="en">', "<head>",
         '<meta charset="utf-8">',
@@ -52,12 +86,8 @@ def render_html_str(diagram: Diagram, notes_list: list[str]) -> str:
         f"<h1>{title_str}</h1>",
         '<p class="lead">Architecture generated from the source code, '
         "without running it.</p>",
-        f"<figure>{svg_str}</figure>"]
-    if notes_list:
-        parts_list.append("<h2>Not drawn</h2>")
-        parts_list.append("<ul>" + "".join(
-            f"<li>{html.escape(note_str)}</li>" for note_str in notes_list)
-            + "</ul>")
+        *figures_list]
+    parts_list.extend(list_notes_html_list(notes_list))
     parts_list.extend([
         f"<footer>FlowBlueprint {__version__}: "
         '<a href="https://github.com/SAMtheROCKET/flowblueprint">'

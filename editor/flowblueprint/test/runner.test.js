@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
 const path = require('node:path');
 const {
-    FORMATS, runPython, ensureTrusted, isSupportedInput, outputPath, drawArguments,
+    FORMATS, LEVELS, runPython, ensureTrusted, isSupportedInput, outputPath, drawArguments,
 } = require('../runner');
 const manifest = require('../package.json');
 
@@ -72,7 +72,8 @@ test('an existing output is replaced only when force is given', () => {
 test('the manifest offers the same formats and levels as the runner', () => {
     const properties = manifest.contributes.configuration.properties;
     assert.deepEqual(properties['flowblueprint.defaultFormat'].enum, FORMATS);
-    assert.deepEqual(properties['flowblueprint.level'].enum, ['detailed', 'summary']);
+    assert.deepEqual(properties['flowblueprint.level'].enum, LEVELS);
+    assert.equal(properties['flowblueprint.level'].default, 'full');
     assert.match(manifest.toolVersion, new RegExp(`^${manifest.version.replace(/\./g, '\\.')}`));
     assert.deepEqual(manifest.contributes.commands.map(item => item.command),
         ['flowblueprint.drawFile', 'flowblueprint.drawFolder']);

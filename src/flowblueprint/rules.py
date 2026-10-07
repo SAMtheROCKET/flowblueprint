@@ -54,10 +54,14 @@ def check_terminators(diagram: Diagram) -> list[Finding]:
         Findings.
     """
     findings_list = []
-    labels_list = [node.label[0] for node in diagram.nodes
-                   if node.kind == TERMINATOR_KIND and node.label]
-    for word_str in ("START", "END"):
-        if word_str not in labels_list:
+    leaving_set = {edge.source_id for edge in diagram.edges}
+    entering_set = {edge.target_id for edge in diagram.edges}
+    terminators_list = [node for node in diagram.nodes
+                        if node.kind == TERMINATOR_KIND]
+    for word_str, is_start in (("START", True), ("END", False)):
+        if not any((node.node_id in leaving_set
+                    and node.node_id not in entering_set) == is_start
+                   for node in terminators_list):
             findings_list.append(Finding("FB001", "error",
                                          f"missing {word_str} terminator"))
     if not any(node.kind == TEXT_KIND and node.label == [diagram.title]
@@ -74,19 +78,22 @@ def check_loops(diagram: Diagram) -> list[Finding]:
         diagram: The diagram.
 
     Returns:
-        Findings.
+        Findings for opening or closing shapes that are not joined to
+        a partner by a loop's back arrow.
     """
-    opened_dict: dict[tuple[str, ...], int] = {}
-    for node in diagram.nodes:
-        key_tuple = tuple(node.label) + (str(node.line),)
-        if node.kind == LOOP_OPEN_KIND:
-            opened_dict[key_tuple] = opened_dict.get(key_tuple, 0) + 1
-        elif node.kind == LOOP_CLOSE_KIND:
-            opened_dict[key_tuple] = opened_dict.get(key_tuple, 0) - 1
+    kinds_dict = {node.node_id: node.kind for node in diagram.nodes}
+    joined_set = set()
+    for edge in diagram.edges:
+        if edge.back_depth and kinds_dict.get(edge.source_id) == (
+                LOOP_CLOSE_KIND) and kinds_dict.get(edge.target_id) == (
+                    LOOP_OPEN_KIND):
+            joined_set.update((edge.source_id, edge.target_id))
     return [Finding("FB003", "error",
-                    f"loop '{' '.join(key_tuple[:-1])}' is not closed",
-                    int(key_tuple[-1]))
-            for key_tuple, count_int in opened_dict.items() if count_int]
+                    f"loop '{' '.join(node.label)}' is not closed",
+                    node.line)
+            for node in diagram.nodes
+            if node.kind in (LOOP_OPEN_KIND, LOOP_CLOSE_KIND)
+            and node.node_id not in joined_set]
 
 
 def check_open_ends(diagram: Diagram) -> list[Finding]:
@@ -106,7 +113,8 @@ def check_open_ends(diagram: Diagram) -> list[Finding]:
     findings_list = []
     for node in diagram.nodes:
         is_flow_node = node.kind in BLOCK_KINDS_TUPLE or (
-            node.kind == TERMINATOR_KIND and node.label == ["START"])
+            node.kind == TERMINATOR_KIND
+            and node.node_id not in entering_set)
         is_column_end = node.kind == CONNECTOR_KIND and (
             node.node_id in entering_set)
         if is_flow_node and not is_column_end and (

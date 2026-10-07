@@ -4,6 +4,7 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 
 const FORMATS = ['drawio', 'svg', 'html', 'md'];
+const LEVELS = ['full', 'detailed', 'summary'];
 
 function runPython(pythonPath, tool, argumentsList, input = '', spawnProcess = spawn) {
     if (tool !== 'flowblueprint') {
@@ -66,8 +67,8 @@ function outputPath(inputPath, isFolder, format) {
 }
 
 function drawArguments(inputPath, output, level, force) {
-    if (!['detailed', 'summary'].includes(level)) {
-        throw new Error('Level must be "detailed" or "summary".');
+    if (!LEVELS.includes(level)) {
+        throw new Error(`Level must be one of ${LEVELS.join(', ')}.`);
     }
     const args = [inputPath, '--output', output, '--level', level];
     if (force) { args.push('--force'); }
@@ -75,5 +76,5 @@ function drawArguments(inputPath, output, level, force) {
 }
 
 module.exports = {
-    FORMATS, runPython, ensureTrusted, isSupportedInput, outputPath, drawArguments,
+    FORMATS, LEVELS, runPython, ensureTrusted, isSupportedInput, outputPath, drawArguments,
 };

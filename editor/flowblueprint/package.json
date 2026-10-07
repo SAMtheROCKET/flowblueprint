@@ -104,15 +104,17 @@
         "flowblueprint.level": {
           "type": "string",
           "enum": [
+            "full",
             "detailed",
             "summary"
           ],
           "enumDescriptions": [
-            "One block per call.",
-            "Consecutive operations packed into fewer blocks."
+            "An overview, the detailed main flow and one page per function.",
+            "The detailed main flow and one page per function.",
+            "The overview only: consecutive operations packed into fewer blocks."
           ],
-          "default": "detailed",
-          "description": "Detail of a single file's flow."
+          "default": "full",
+          "description": "How much to draw."
         }
       }
     }

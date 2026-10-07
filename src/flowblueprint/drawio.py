@@ -8,9 +8,12 @@ draw.io's standard flowchart library; output is deterministic.
 import html
 import xml.etree.ElementTree as ET
 
+from flowblueprint.layout import route_back_list
+
 from flowblueprint.model import (
     CONNECTOR_KIND, DATA_KIND, DATABASE_KIND, DECISION_KIND, DOCUMENT_KIND,
-    LEGEND_KIND, LOOP_CLOSE_KIND, LOOP_OPEN_KIND, PLOT_KIND, PROCESS_KIND,
+    LEGEND_KIND, LOOP_CLOSE_KIND, LOOP_FRAME_KIND, LOOP_OPEN_KIND, PLOT_KIND,
+    PROCESS_KIND,
     SECTION_KIND, STORAGE_KIND, TERMINATOR_KIND, TEXT_KIND, Diagram, Edge,
     Node)
 
@@ -32,6 +35,8 @@ SHAPE_STYLES_DICT = {
     TEXT_KIND: "text;align=center;verticalAlign=middle;",
     LEGEND_KIND: "rounded=0;",
     SECTION_KIND: "rounded=1;arcSize=40;dashed=1;fontSize=12;",
+    LOOP_FRAME_KIND: "rounded=1;arcSize=4;dashed=1;"
+                     "connectable=0;",
 }
 EDGE_STYLE_STR = ("edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;"
                   "endArrow=block;endFill=1;fontSize=11;")
@@ -63,6 +68,8 @@ def build_node_style_str(node: Node) -> str:
     """
     style_str = SHAPE_STYLES_DICT.get(node.kind, "rounded=0;")
     style_str += COMMON_STYLE_STR
+    if node.kind == LOOP_FRAME_KIND:
+        return style_str + f"strokeColor=#8a9bb5;fillColor={node.fill};"
     if node.kind == TEXT_KIND:
         return style_str + (f"strokeColor=none;fillColor=none;"
                             f"align={node.align};")
@@ -98,6 +105,9 @@ def build_edge_style_str(edge: Edge, nodes_dict: dict[str, Node]) -> str:
     source_x_float, _ = find_centre_tuple(source)
     target_x_float, _ = find_centre_tuple(target)
     style_str = EDGE_STYLE_STR
+    if edge.back_depth:
+        return style_str + ("exitX=0;exitY=0.5;entryX=0;entryY=0.5;"
+                            "fontStyle=2;")
     if edge.is_side:
         return style_str + "exitX=1;exitY=0.5;entryX=0;entryY=0.5;"
     if edge.enters_top and (target.y_px > source.y_px + source.height
@@ -149,9 +159,39 @@ def render_drawio_str(diagram: Diagram) -> str:
     Returns:
         The file text.
     """
+    return render_drawio_pages_str([diagram])
+
+
+def render_drawio_pages_str(pages_list: list[Diagram]) -> str:
+    """Render diagrams as the pages (tabs) of one draw.io file.
+
+    Args:
+        pages_list: The pages, in order.
+
+    Returns:
+        The file text.
+    """
     mxfile = ET.Element("mxfile", host="flowblueprint", type="device")
-    page = ET.SubElement(mxfile, "diagram", id="flowblueprint",
-                         name=diagram.title)
+    for index_int, diagram in enumerate(pages_list):
+        add_page_none(mxfile, diagram, "flowblueprint" + (
+            f"-{index_int + 1}" if index_int else ""))
+    ET.indent(mxfile)
+    return ET.tostring(mxfile, encoding="unicode") + "\n"
+
+
+def add_page_none(mxfile: ET.Element, diagram: Diagram, id_str: str) -> None:
+    """Add one diagram as a page of a draw.io file.
+
+    Args:
+        mxfile: The file's root element (changed in place).
+        diagram: The page's diagram.
+        id_str: A page id unique within the file.
+
+    Returns:
+        None.
+    """
+    page = ET.SubElement(mxfile, "diagram", id=id_str,
+                         name=diagram.title[:60])
     model = ET.SubElement(page, "mxGraphModel", grid="1", gridSize="10",
                           guides="1", tooltips="1", connect="1", arrows="1",
                           fold="1", page="1", pageScale="1",
@@ -170,13 +210,14 @@ def render_drawio_str(diagram: Diagram) -> str:
                              target=edge.target_id)
         geometry = ET.SubElement(cell, "mxGeometry", relative="1",
                                  attrib={"as": "geometry"})
-        if edge.waypoints:
+        waypoints_list = edge.waypoints or (route_back_list(
+            nodes_dict[edge.source_id], nodes_dict[edge.target_id],
+            edge.back_depth)[1:3] if edge.back_depth else [])
+        if waypoints_list:
             points = ET.SubElement(geometry, "Array", attrib={"as": "points"})
-            for x_float, y_float in edge.waypoints:
+            for x_float, y_float in waypoints_list:
                 ET.SubElement(points, "mxPoint", x=format_number_str(x_float),
                               y=format_number_str(y_float))
-    ET.indent(mxfile)
-    return ET.tostring(mxfile, encoding="unicode") + "\n"
 
 
 def build_port_style_str(edge: Edge, source: Node, target: Node) -> str:

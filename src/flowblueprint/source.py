@@ -36,6 +36,8 @@ class FunctionInfo:
         body: The function's statements (kept so a script function
             that carries the whole flow can be drawn step by step).
         owner_class: The class a method belongs to, else "".
+        source_path: The developed module's file, or None for the
+            script itself.
     """
 
     name: str
@@ -47,6 +49,7 @@ class FunctionInfo:
     body: list[ast.stmt] = field(default_factory=list, repr=False,
                                  compare=False)
     owner_class: str = ""
+    source_path: Path | None = None
 
 
 @dataclass
@@ -342,8 +345,13 @@ def parse_module_tuple(module_path: Path, short_str: str
         module_tree = parse_file(module_path)
     except (SyntaxError, ValueError, UnicodeDecodeError):
         return {}, {}
-    return (collect_functions(module_tree, short_str),
-            collect_classes(module_tree, short_str))
+    functions_dict = collect_functions(module_tree, short_str)
+    classes_dict = collect_classes(module_tree, short_str)
+    for function_info in [*functions_dict.values(), *(
+            method for class_info in classes_dict.values()
+            for method in class_info.methods.values())]:
+        function_info.source_path = module_path
+    return functions_dict, classes_dict
 
 
 def add_developed_none(info: ScriptInfo, local_str: str,
