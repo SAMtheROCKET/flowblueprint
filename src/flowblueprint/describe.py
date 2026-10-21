@@ -38,6 +38,8 @@ unpack update upload validate verify visualise visualize wrap write
 LIBRARY_PHRASES_DICT = {
     "read_csv": "Read the CSV table", "read_parquet": "Read the Parquet table",
     "read_excel": "Read the Excel sheet", "read_json": "Read the JSON table",
+    "execute": "Execute SQL", "executemany": "Execute SQL for each row",
+    "executescript": "Execute the SQL script",
     "read_sql": "Query the database", "read_sql_query": "Query the database",
     "read_sql_table": "Read the database table",
     "read_pickle": "Load the pickled data", "read_feather": "Read the table",

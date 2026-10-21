@@ -1,5 +1,10 @@
 # FlowBlueprint
 
+Local unpublished update: [0.3.2a0 three-tool workflow](docs/THREE_TOOL_WORKFLOW.md).
+
+Editable PNG imports are fixed in this local version. Regenerate older
+`.drawio.png` files if draw.io opens them as an empty canvas.
+
 [![CI](https://github.com/SAMtheROCKET/flowblueprint/actions/workflows/ci.yml/badge.svg)](https://github.com/SAMtheROCKET/flowblueprint/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/flowblueprint?include_prereleases)](https://pypi.org/project/flowblueprint/)
 [![Python](https://img.shields.io/pypi/pyversions/flowblueprint)](https://pypi.org/project/flowblueprint/)
@@ -30,6 +35,22 @@ and FlowBlueprint (architect).
 
 **Status:** alpha, version 0.2.1a0 on PyPI. Free and open source (MIT).
 Works offline: no AI model, account or internet connection needed.
+
+## Local development: reference architecture workflow
+
+Version **0.3.0a0** adds the reference-style operational canvas and a
+connected FuncLoom modularization workflow. These local changes have not
+been published.
+
+```powershell
+python -m flowblueprint my_project --view reference -o architecture.drawio
+python -m flowblueprint my_script.py --modularize-to new_draft --externalize-sql --png
+```
+
+The draft contains a modular `project/`, high-level and detailed editable
+diagrams, and a report of refusals, uncertainty and source hashes.
+Original sources stay unchanged. See [the workflow guide](docs/REFERENCE_WORKFLOW.md)
+for the exact coverage, output files, editor commands and limitations.
 
 ## Start in one minute
 
@@ -404,3 +425,11 @@ FlowBlueprint does.
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+## Editable PNG and SQL resources
+
+Use `-o architecture.drawio.png` to embed the complete editable draw.io
+document in the PNG (requires the existing `[png]` extra). Plain `.png`
+stays image-only. Query loaders with literal `.sql` arguments produce
+file-read shapes and project read summaries. See
+[SQL resources and project style](docs/SQL_RESOURCES.md).

@@ -11,8 +11,8 @@
     "flowchart",
     "jupyter"
   ],
-  "version": "0.2.1",
-  "toolVersion": "0.2.1a0",
+  "version": "0.3.2",
+  "toolVersion": "0.3.2a0",
   "publisher": "samtherocket",
   "license": "MIT",
   "icon": "icon.png",
@@ -53,6 +53,14 @@
       {
         "command": "flowblueprint.drawFolder",
         "title": "FlowBlueprint: Draw architecture of this project"
+      },
+      {
+        "command": "flowblueprint.modularizeFile",
+        "title": "FlowBlueprint: Run three-tool pipeline of this file"
+      },
+      {
+        "command": "flowblueprint.modularizeFolder",
+        "title": "FlowBlueprint: Run three-tool pipeline of this project"
       }
     ],
     "menus": {
@@ -64,6 +72,16 @@
         },
         {
           "command": "flowblueprint.drawFolder",
+          "when": "explorerResourceIsFolder",
+          "group": "flowblueprint"
+        },
+        {
+          "command": "flowblueprint.modularizeFile",
+          "when": "resourceExtname == .py || resourceExtname == .ipynb",
+          "group": "flowblueprint"
+        },
+        {
+          "command": "flowblueprint.modularizeFolder",
           "when": "explorerResourceIsFolder",
           "group": "flowblueprint"
         }
@@ -88,12 +106,16 @@
           "type": "string",
           "enum": [
             "drawio",
+            "drawio.png",
+            "png",
             "svg",
             "html",
             "md"
           ],
           "enumDescriptions": [
             "Editable draw.io diagram.",
+            "PNG with editable draw.io data (requires the PNG extra).",
+            "PNG image (requires the PNG extra).",
             "SVG image.",
             "Self-contained web page.",
             "Markdown with a Mermaid flowchart that GitHub and GitLab render."
@@ -115,6 +137,25 @@
           ],
           "default": "full",
           "description": "How much to draw."
+        },
+        "flowblueprint.view": {
+          "type": "string",
+          "enum": [
+            "pages",
+            "reference"
+          ],
+          "default": "reference",
+          "description": "Reference: side-by-side operational flows and two architecture levels. Pages: imports plus individual function pages."
+        },
+        "flowblueprint.externalizeSql": {
+          "type": "boolean",
+          "default": false,
+          "description": "During modular drafting, extract supported SQL into adjacent sql folders."
+        },
+        "flowblueprint.workflowPng": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include architecture.drawio.png in modular drafts. Requires the optional PNG renderer."
         }
       }
     }

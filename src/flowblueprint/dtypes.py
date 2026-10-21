@@ -156,6 +156,12 @@ def infer_return_dtype_str(body_list: list[ast.stmt]) -> str:
             body_list[-1].value is None):
         return ""
     value = body_list[-1].value
+    if (len(body_list) == 2 and isinstance(
+            body_list[0], (ast.FunctionDef, ast.AsyncFunctionDef))
+            and not body_list[0].decorator_list
+            and isinstance(value, ast.Name)
+            and value.id == body_list[0].name):
+        return "Callable"
     if not isinstance(value, ast.Name):
         dtype_str = infer_value_dtype_str(value)
         return "" if dtype_str == UNKNOWN_DTYPE_STR else dtype_str

@@ -319,12 +319,25 @@ def find_module_file(folder: Path, module_str: str) -> Path | None:
         installed or standard-library module).
     """
     relative_str = module_str.lstrip(".")
-    if not relative_str:
-        return None
-    base_path = folder.joinpath(*relative_str.split("."))
-    for candidate in (base_path.with_suffix(".py"), base_path / "__init__.py"):
-        if candidate.is_file():
-            return candidate
+    level_int = len(module_str) - len(relative_str)
+    folders_list = [folder]
+    if level_int:
+        for _ in range(level_int - 1):
+            folder = folder.parent
+        folders_list = [folder]
+    else:
+        # A package may use absolute imports from its containing project.
+        while (folder / "__init__.py").is_file():
+            folder = folder.parent
+            folders_list.append(folder)
+    for search_path in folders_list:
+        base_path = search_path.joinpath(*relative_str.split("."))
+        candidates_tuple = ((base_path.with_suffix(".py"),
+                             base_path / "__init__.py") if relative_str
+                            else (base_path / "__init__.py",))
+        for candidate in candidates_tuple:
+            if candidate.is_file() and not candidate.is_symlink():
+                return candidate
     return None
 
 

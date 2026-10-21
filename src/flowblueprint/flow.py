@@ -19,6 +19,9 @@ from flowblueprint.model import (
     SECTION_KIND, STORAGE_KIND, Branch, Flow, Item, Loop, Note, Port, Source,
     Step)
 from flowblueprint.source import FunctionInfo, ScriptInfo, load_script
+from flowblueprint.sql_sources import (
+    find_sql_connection_source, find_sql_source,
+)
 
 MAX_TEXT_LENGTH_INT = 60
 # Function pages drawn per script at most, in the order of first call.
@@ -430,6 +433,10 @@ class FlowBuilder:
         Returns:
             A Source, or None when the call does no recognised I/O.
         """
+        sql_source = (find_sql_source(call)
+                      or find_sql_connection_source(call))
+        if sql_source is not None:
+            return sql_source
         name_str = dtypes.read_called_name_str(call.func)
         short_str = name_str.split(".")[-1]
         receiver_str = name_str.rsplit(".", 1)[0] if "." in name_str else ""
@@ -450,15 +457,26 @@ class FlowBuilder:
             return Source(DOCUMENT_KIND, label_str, True)
         if short_str in DATABASE_NAMES_FROZENSET:
             return Source(DATABASE_KIND, label_str, is_write)
+        return Source(STORAGE_KIND if self.check_storage_bool(location)
+                      else DATA_KIND, label_str, is_write)
+
+    def check_storage_bool(self, location: ast.expr | None) -> bool:
+        """Whether a location names cloud or network storage.
+
+        Args:
+            location: The path expression, or None.
+
+        Returns:
+            True when a string in it, or the constant it names, starts
+            with s3://, gs://, abfs://, hdfs:// or a UNC share.
+        """
         texts_list = [node.value for node in ast.walk(location)
                       if isinstance(node, ast.Constant)
                       and isinstance(node.value, str)] if location else []
         if isinstance(location, ast.Name):
             texts_list.append(self.constants_dict.get(location.id, ""))
-        is_storage = any(STORAGE_PATTERN.match(text_str)
-                         for text_str in texts_list)
-        return Source(STORAGE_KIND if is_storage else DATA_KIND, label_str,
-                      is_write)
+        return any(STORAGE_PATTERN.match(text_str)
+                   for text_str in texts_list)
 
     def find_location_argument(self, call: ast.Call, short_str: str,
                                is_write: bool) -> ast.expr | None:
@@ -815,7 +833,8 @@ class FlowBuilder:
         sources_list = [source for source in (
             self.find_io_source(node) for node in ast.walk(statement)
             if isinstance(node, ast.Call)
-            and not (function_info and node is call)) if source]
+            and not (function_info and node is call
+                     and find_sql_source(node) is None)) if source]
         if function_info is not None:
             step = self.build_function_step(call, function_info, targets_list)
         else:
@@ -836,6 +855,10 @@ class FlowBuilder:
         """
         calls_list = [node for node in ast.walk(statement)
                       if isinstance(node, ast.Call)]
+        for call in calls_list:
+            if find_sql_connection_source(call) and not (
+                    self.resolve_function(call)):
+                return call
         for call in calls_list:
             if self.resolve_function(call):
                 return call

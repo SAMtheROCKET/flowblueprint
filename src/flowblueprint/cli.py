@@ -30,6 +30,9 @@ from flowblueprint.page import render_html_pages_str, render_html_str
 from flowblueprint.png import PngUnavailableError, render_png_bytes
 from flowblueprint.project import (
     ENTRY_KIND, NOTEBOOK_KIND, Project, load_project)
+from flowblueprint.reference_cli import (
+    add_reference_options_none, dispatch_reference_int,
+)
 from flowblueprint.rules import check_diagram
 from flowblueprint.source import load_script
 from flowblueprint.svg import render_svg_str
@@ -79,6 +82,7 @@ def build_parser() -> argparse.ArgumentParser:
                         help="most blocks per column (default 10)")
     parser.add_argument("--version", action="version",
                         version=f"flowblueprint {__version__}")
+    add_reference_options_none(parser)
     add_check_options_none(parser)
     add_folder_options_none(parser)
     return parser
@@ -313,7 +317,8 @@ def compare_output_int(output: Path, data: str | bytes) -> int:
 
 
 def finish_output_int(arguments: argparse.Namespace, output: Path,
-                      text_str: str, summary_str: str) -> int:
+                      text_str: str, summary_str: str,
+                      pages_list: list[Diagram] | None = None) -> int:
     """Write the drawing, or compare it with the saved file.
 
     Args:
@@ -321,6 +326,8 @@ def finish_output_int(arguments: argparse.Namespace, output: Path,
         output: The output file.
         text_str: The rendered text.
         summary_str: What was drawn, for the success message.
+        pages_list: The pages, embedded as an editable draw.io copy in a
+            .drawio.png output; None for other outputs.
 
     Returns:
         The exit code; 2 when PNG output lacks its optional renderer.
@@ -329,6 +336,11 @@ def finish_output_int(arguments: argparse.Namespace, output: Path,
     if output.suffix.lower() == ".png":
         try:
             data = render_png_bytes(text_str)
+            if output.name.lower().endswith(".drawio.png"):
+                from flowblueprint.png_metadata import add_drawio_to_png_bytes
+
+                data = add_drawio_to_png_bytes(
+                    data, render_drawio_pages_str(pages_list or []))
         except PngUnavailableError as error:
             print(f"flowblueprint: {error}", file=sys.stderr)
             return 2
@@ -389,7 +401,7 @@ def run_project_int(arguments: argparse.Namespace) -> int:
         arguments, output,
         render_pages_str(output, pages_list, project.notes),
         f"{len(project.files)} files, {len(project.edges)} imports, "
-        f"{len(pages_list)} page(s)")
+        f"{len(pages_list)} page(s)", pages_list)
 
 
 def list_entry_flows_list(folder: Path, project: Project,
@@ -441,8 +453,24 @@ def main(argv_list: list[str] | None = None) -> int:
     script = arguments.script
     if not check_output_suffix_bool(arguments.output):
         return 2
+    reference_status = dispatch_reference_int(arguments)
+    if reference_status is not None:
+        return reference_status
     if script.is_dir():
         return run_project_int(arguments)
+    return run_script_int(arguments)
+
+
+def run_script_int(arguments: argparse.Namespace) -> int:
+    """Draw one script or notebook: its overview, flow and functions.
+
+    Args:
+        arguments: The parsed command line.
+
+    Returns:
+        The exit code, as described for main.
+    """
+    script = arguments.script
     try:
         flow = load_flow(script, arguments.overrides)
     except (OSError, SyntaxError, ValueError,
@@ -466,7 +494,8 @@ def main(argv_list: list[str] | None = None) -> int:
                          for note in page_flow.notes})
     return finish_output_int(
         arguments, output, render_pages_str(output, pages_list, notes_list),
-        f"{len(pages_list)} page(s): {describe_pages_str(flows_list)}")
+        f"{len(pages_list)} page(s): {describe_pages_str(flows_list)}",
+        pages_list)
 
 
 def describe_pages_str(flows_list: list[Flow]) -> str:

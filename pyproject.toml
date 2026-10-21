@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flowblueprint"
-version = "0.2.1a0"
+version = "0.3.2a0"
 description = "The Python architect: turn scripts, Jupyter notebooks and whole projects into architecture diagrams (draw.io, SVG, HTML, Mermaid) with inputs, outputs, dtypes, loops and decisions"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -23,7 +23,7 @@ classifiers = [
     "Topic :: Software Development :: Documentation",
     "Topic :: Software Development :: Quality Assurance",
 ]
-dependencies = ["funcloom>=0.10.3a0,<0.11", "refactrail>=0.4.0a0,<0.6"]
+dependencies = ["funcloom>=0.10.8a0,<0.11", "refactrail>=0.5.3a0,<0.6"]
 
 [project.optional-dependencies]
 release = ["build>=1.2,<2", "setuptools>=77", "twine>=6,<7"]

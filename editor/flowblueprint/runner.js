@@ -3,15 +3,16 @@
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 
-const FORMATS = ['drawio', 'svg', 'html', 'md'];
+const FORMATS = ['drawio', 'drawio.png', 'png', 'svg', 'html', 'md'];
 const LEVELS = ['full', 'detailed', 'summary'];
+const VIEWS = ['pages', 'reference'];
 
 function runPython(pythonPath, tool, argumentsList, input = '', spawnProcess = spawn) {
     if (tool !== 'flowblueprint') {
         throw new Error('Unsupported tool');
     }
     return new Promise((resolve, reject) => {
-        const process = spawnProcess(pythonPath, ['-I', '-m', tool, ...argumentsList], {
+        const process = spawnProcess(pythonPath, ['-I', '-X', 'utf8', '-m', tool, ...argumentsList], {
             shell: false,
             windowsHide: true,
             env: { ...global.process.env, PYTHONNOUSERSITE: '1', PYTHONUTF8: '1' },
@@ -66,15 +67,25 @@ function outputPath(inputPath, isFolder, format) {
     return path.join(parsed.dir, `${parsed.name}.${format}`);
 }
 
-function drawArguments(inputPath, output, level, force) {
+function drawArguments(inputPath, output, level, force, view = 'pages') {
     if (!LEVELS.includes(level)) {
         throw new Error(`Level must be one of ${LEVELS.join(', ')}.`);
     }
     const args = [inputPath, '--output', output, '--level', level];
+    if (!VIEWS.includes(view)) { throw new Error('Unknown architecture view.'); }
+    if (view !== 'pages') { args.push('--view', view); }
     if (force) { args.push('--force'); }
     return args;
 }
 
+function modularizeArguments(inputPath, outputDirectory, externalizeSql, png) {
+    const args = [inputPath, '--pipeline-to', outputDirectory];
+    if (externalizeSql) { args.push('--externalize-sql'); }
+    if (png) { args.push('--png'); }
+    return args;
+}
+
 module.exports = {
+    VIEWS, modularizeArguments,
     FORMATS, LEVELS, runPython, ensureTrusted, isSupportedInput, outputPath, drawArguments,
 };

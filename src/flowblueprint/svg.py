@@ -243,6 +243,26 @@ def route_side_list(source: Node, target: Node
     return [(source.x_px + source.width, middle_y), (target.x_px, middle_y)]
 
 
+def route_loop_back_list(edge: Edge, source: Node, target: Node
+                         ) -> list[tuple[float, float]]:
+    """Route a loop's arrow from its closing shape back to its opening.
+
+    Args:
+        edge: The back edge.
+        source: The loop's closing shape.
+        target: The loop's opening shape.
+
+    Returns:
+        Through the layout's waypoints when it set some, else up the
+        loop's left side.
+    """
+    if edge.waypoints:
+        return [(source.x_px, source.y_px + source.height / 2),
+                *edge.waypoints,
+                (target.x_px, target.y_px + target.height / 2)]
+    return route_back_list(source, target, edge.back_depth)
+
+
 def route_points_list(edge: Edge, nodes_dict: dict[str, Node]
                       ) -> list[tuple[float, float]]:
     """A right-angled route for an arrow.
@@ -256,7 +276,7 @@ def route_points_list(edge: Edge, nodes_dict: dict[str, Node]
     """
     source, target = nodes_dict[edge.source_id], nodes_dict[edge.target_id]
     if edge.back_depth:
-        return route_back_list(source, target, edge.back_depth)
+        return route_loop_back_list(edge, source, target)
     source_mid_x = source.x_px + source.width / 2
     target_mid_x = target.x_px + target.width / 2
     target_mid_y = target.y_px + target.height / 2

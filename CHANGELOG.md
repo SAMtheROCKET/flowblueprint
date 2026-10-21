@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.3.2a0 - unpublished local development
+
+Fix empty draw.io imports from editable PNG exports. Place URL-encoded
+mxfile metadata before the first IDAT chunk, matching draw.io's reader;
+remove stale mxfile/mxGraphModel metadata while preserving raster bytes
+and unrelated chunks. Retain whole-file checksums and end validation.
+Regression tests now enforce the reader's early-stop boundary in both
+standalone and workflow exports, rather than scanning every PNG chunk.
+Regenerate older editable PNGs to pick up this fix.
+
+## 0.3.1a0 - unpublished local development
+
+Add --pipeline-to for FuncLoom -> RefacTrail -> final-source architecture. Include review reports, context checklist and declared-function detail pages. Editor drafting commands run the combined pipeline with UTF-8 output.
+
+## 0.3.0a0 (local development, unpublished)
+
+- Reference architecture canvases: independent entry flows side by side,
+  consistent module legends, high-level and detailed operational views.
+- Long loops continue across columns through unique connector pairs;
+  repeat paths retain their endpoints and are included in image bounds.
+- `--modularize-to` creates a new FuncLoom draft and diagrams that draft.
+  Optional SQL resources and editable PNG; explicit partial-conversion
+  status, source hashes, and cleanup when drawing fails.
+- Detailed drafts expand only generated steps recorded by FuncLoom and
+  show configuration/query inputs. Returned callables stay unresolved.
+- Resolve local absolute package and relative imports without execution.
+  A directly returned nested function is labelled Callable, not a type
+  guessed from its name suffix.
+- Extension source adds reference-view selection and modular-draft
+  commands. No extension installation or marketplace release is implied.
+
+
+## 0.2.2a0 - unreleased
+
+Show literal SQL file reads for query loaders in detailed flows and
+project summaries. `.drawio.png` embeds editable multi-page draw.io XML
+while retaining the rendered pixels; plain PNG behavior is unchanged.
+
+
 ## Unreleased
 
 Changes from the owner's hands-on trial (7 October 2026), where loops

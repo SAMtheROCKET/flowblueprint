@@ -1,14 +1,18 @@
 'use strict';
 
 const fs = require('node:fs');
+const path = require('node:path');
 const {
     FORMATS, runPython, ensureTrusted, isSupportedInput, outputPath, drawArguments,
+    modularizeArguments,
 } = require('./runner');
 const { resolvePythonPath, ensureTool } = require('./setup');
 const manifest = require('./package.json');
 
 const FORMAT_LABELS = {
     drawio: 'draw.io diagram (editable)',
+    'drawio.png': 'Editable PNG (requires the PNG renderer)',
+    png: 'PNG image (requires the PNG renderer)',
     svg: 'SVG image',
     html: 'Web page',
     md: 'Markdown with a Mermaid flowchart',
@@ -89,7 +93,8 @@ function activate(context) {
             pythonPath, tool, displayName: manifest.displayName,
             version: manifest.toolVersion, runPython,
         });
-        const args = drawArguments(uri.fsPath, target, config.get('level', 'full'), force);
+        const args = drawArguments(uri.fsPath, target, config.get('level', 'full'), force,
+            config.get('view', 'reference'));
         const result = await vscode.window.withProgress(
             { location: vscode.ProgressLocation.Notification, title: 'Drawing the architecture...' },
             () => runPython(pythonPath, tool, args));
@@ -103,7 +108,55 @@ function activate(context) {
         await openResult(target, format);
     }
 
+    async function modularize(isFolder, clicked) {
+        ensureTrusted(vscode);
+        const uri = isFolder ? await activeFolderUri(clicked) : activeFileUri(clicked);
+        if (!uri) { return; }
+        if (uri.scheme !== 'file' || !isSupportedInput(uri.fsPath, isFolder)) {
+            throw new Error('Use a local saved Python file, notebook, or project folder.');
+        }
+        const proposed = path.join(path.dirname(uri.fsPath),
+            `${path.parse(uri.fsPath).name}-flowblueprint`);
+        const destination = await vscode.window.showSaveDialog({
+            defaultUri: vscode.Uri.file(proposed),
+            title: 'New folder for the modular draft and architecture',
+            saveLabel: 'Create draft folder',
+        });
+        if (!destination) { return; }
+        if (destination.scheme !== 'file' || fs.existsSync(destination.fsPath)) {
+            throw new Error('Choose a new local folder name; existing folders are preserved.');
+        }
+        const config = vscode.workspace.getConfiguration(tool, uri);
+        const pythonPath = await resolvePythonPath(vscode, uri, config.get('pythonPath', ''));
+        await ensureTool(vscode, {
+            pythonPath, tool, displayName: manifest.displayName,
+            version: manifest.toolVersion, runPython,
+        });
+        const args = modularizeArguments(uri.fsPath, destination.fsPath,
+            config.get('externalizeSql', false), config.get('workflowPng', false));
+        const result = await vscode.window.withProgress(
+            { location: vscode.ProgressLocation.Notification,
+                title: 'Running FuncLoom, RefacTrail and FlowBlueprint...' },
+            () => runPython(pythonPath, tool, args));
+        output.clear();
+        output.appendLine(result.output);
+        if (result.errors) { output.appendLine(result.errors); }
+        const target = path.join(destination.fsPath, 'architecture.drawio');
+        if (![0, 1].includes(result.code) || !fs.existsSync(target)) {
+            output.show(true);
+            throw new Error(result.errors.trim() || result.output.trim() || 'Drafting failed.');
+        }
+        if (result.code === 1) {
+            output.show(true);
+            await vscode.window.showWarningMessage(
+                'The draft needs review. Open review.md for remaining refactoring findings, context questions and conversion limits.');
+        }
+        await openResult(target, 'drawio');
+    }
+
     const handlers = {
+        modularizeFile: clicked => modularize(false, clicked),
+        modularizeFolder: clicked => modularize(true, clicked),
         drawFile: clicked => draw(false, clicked),
         drawFolder: clicked => draw(true, clicked),
     };

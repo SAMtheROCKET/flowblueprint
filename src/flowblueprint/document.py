@@ -111,7 +111,9 @@ def stack_pages_diagram(pages_list: list[Diagram]) -> Diagram:
                                     for x_float, y_float in edge.waypoints]
             whole.edges.append(moved_edge)
         whole.column_count = max(whole.column_count, page.column_count)
-        top_float = max(node.y_px + node.height
-                        for node in whole.nodes) + PAGE_GAP_FLOAT
+        top_float = max(
+            [node.y_px + node.height for node in whole.nodes]
+            + [point[1] for edge in whole.edges
+               for point in edge.waypoints]) + PAGE_GAP_FLOAT
     return whole
 

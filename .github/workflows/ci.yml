@@ -16,6 +16,9 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -m pip install --upgrade pip
+      # FuncLoom and RefacTrail come from their main branches, so this
+      # checks FlowBlueprint against versions not yet on PyPI.
+      - run: python -m pip install "funcloom @ git+https://github.com/SAMtheROCKET/funcloom.git" "refactrail @ git+https://github.com/SAMtheROCKET/refactrail.git"
       - run: python -m pip install -e ".[release,png]"
       - name: Regression tests
         run: python -m unittest discover -s tests -v
@@ -38,7 +41,7 @@ jobs:
           else
             CLEAN="$RUNNER_TEMP/clean/Scripts/python.exe"
           fi
-          "$CLEAN" -m pip install dist/*.whl
+          "$CLEAN" -m pip install "funcloom @ git+https://github.com/SAMtheROCKET/funcloom.git" "refactrail @ git+https://github.com/SAMtheROCKET/refactrail.git" dist/*.whl
           cd "$RUNNER_TEMP"
           "$CLEAN" -m flowblueprint "$GITHUB_WORKSPACE/tests/examples/station_report.py" -o check.drawio
           "$CLEAN" -m flowblueprint "$GITHUB_WORKSPACE/tests/examples/station_report.py" --level summary -o check.svg
@@ -61,6 +64,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The action installs FlowBlueprint with the same Python; its
+      # unreleased dependencies come from their main branches first.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install "funcloom @ git+https://github.com/SAMtheROCKET/funcloom.git" "refactrail @ git+https://github.com/SAMtheROCKET/refactrail.git"
       - id: draw
         uses: ./
         with:

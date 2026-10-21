@@ -1,3 +1,3 @@
 """FlowBlueprint version."""
 
-__version__ = "0.2.1a0"
+__version__ = "0.3.2a0"

@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
 const path = require('node:path');
 const {
-    FORMATS, LEVELS, runPython, ensureTrusted, isSupportedInput, outputPath, drawArguments,
+    FORMATS, LEVELS, VIEWS, modularizeArguments, runPython, ensureTrusted, isSupportedInput, outputPath, drawArguments,
 } = require('../runner');
 const manifest = require('../package.json');
 
@@ -35,7 +35,7 @@ test('runner uses isolated Python, argument arrays and no shell', async () => {
     assert.equal(actual.executable, 'C:\\python path\\python.exe');
     assert.equal(actual.options.shell, false);
     assert.equal(actual.options.windowsHide, true);
-    assert.deepEqual(actual.args, ['-I', '-m', 'flowblueprint', source, '--output', 'x.svg']);
+    assert.deepEqual(actual.args, ['-I', '-X', 'utf8', '-m', 'flowblueprint', source, '--output', 'x.svg']);
     assert.equal(result.code, 0);
     assert.match(result.output, /wrote x\.svg/);
 });
@@ -58,7 +58,9 @@ test('output goes next to the file, or into the folder', () => {
     assert.equal(outputPath(script, false, 'drawio'), path.join('work space', 'report.v2.drawio'));
     assert.equal(outputPath(script, false, 'md'), path.join('work space', 'report.v2.md'));
     assert.equal(outputPath('project', true, 'html'), path.join('project', 'architecture.html'));
-    assert.throws(() => outputPath(script, false, 'png'), /Format/);
+    assert.equal(outputPath(script, false, 'png'), path.join('work space', 'report.v2.png'));
+    assert.equal(outputPath(script, false, 'drawio.png'), path.join('work space', 'report.v2.drawio.png'));
+    assert.throws(() => outputPath(script, false, 'pdf'), /Format/);
 });
 
 test('an existing output is replaced only when force is given', () => {
@@ -76,5 +78,18 @@ test('the manifest offers the same formats and levels as the runner', () => {
     assert.equal(properties['flowblueprint.level'].default, 'full');
     assert.match(manifest.toolVersion, new RegExp(`^${manifest.version.replace(/\./g, '\\.')}`));
     assert.deepEqual(manifest.contributes.commands.map(item => item.command),
-        ['flowblueprint.drawFile', 'flowblueprint.drawFolder']);
+        ['flowblueprint.drawFile', 'flowblueprint.drawFolder',
+            'flowblueprint.modularizeFile', 'flowblueprint.modularizeFolder']);
+    assert.deepEqual(properties['flowblueprint.view'].enum, VIEWS);
+    assert.equal(properties['flowblueprint.view'].default, 'reference');
+});
+
+test('reference mode and new-copy workflows use explicit safe arguments', () => {
+    assert.deepEqual(drawArguments('a.py', 'a.drawio', 'full', false, 'reference'),
+        ['a.py', '--output', 'a.drawio', '--level', 'full', '--view', 'reference']);
+    assert.throws(() => drawArguments('a.py', 'a.svg', 'full', false, 'bad'), /view/);
+    assert.deepEqual(modularizeArguments('work space/a.py', 'draft space', true, true),
+        ['work space/a.py', '--pipeline-to', 'draft space', '--externalize-sql', '--png']);
+    assert.deepEqual(modularizeArguments('repo', 'draft', false, false),
+        ['repo', '--pipeline-to', 'draft']);
 });
